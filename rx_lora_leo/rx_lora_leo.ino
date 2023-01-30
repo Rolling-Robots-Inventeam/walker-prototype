@@ -5,7 +5,7 @@ SoftwareSerial lora(2,3);
 // Arduino Pin 3 goes to Lora RX
 String myString; 
 String garbage;
-char data; 
+String data; 
 void setup() {
   // put your setup code here, to run once:
 Serial.begin(115200);
@@ -36,6 +36,17 @@ delay(1000);
 lora.setTimeout(250); 
 }
 
+void navigateWalker() {
+  // move the walker a small amount
+  int stepSize = 5; // adjust as needed
+  //moveForward(stepSize);
+  Serial.println("Walker is moving");
+}
+bool summoned = false;
+enum SummonStatus {NOT_SUMMONED, SUMMONED};
+SummonStatus summonStatus = NOT_SUMMONED;
+
+/*
 void loop() {
   // put your main code here, to run repeatedly:
 
@@ -49,3 +60,50 @@ if ( lora.available() > 0 )
 delay(100); 
 }
 }
+*/
+/*
+void loop() {
+  // put your main code here, to run repeatedly:
+  if (lora.available() > 0 )
+  {
+    //myString = lora.readString(); 
+    Serial.println("test" + myString);
+    if (myString == "summon") {
+      navigateWalker();
+    }
+    else {
+      Serial.println("Walker Stopped");
+    }
+    Serial.println("Software Serial:");
+    Serial.println(myString); 
+  } else {
+    delay(100); 
+  }
+}
+*/
+
+
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  if (lora.available() > 0 )
+  {
+    data = lora.readString(); 
+    /*if (isDigit(data)) {
+        if (data == '1') {
+          summoned = false;
+          return;
+        }
+        else {
+          summoned = true;
+        }
+    }
+    */
+    Serial.println("Software Serial:");
+    Serial.println(data); 
+  } else {
+    delay(100); 
+  }
+}
+
+
