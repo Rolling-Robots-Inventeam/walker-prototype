@@ -5,7 +5,7 @@ SoftwareSerial lora(2,3);
 // Arduino Pin 3 goes to Lora RX
 String myString; 
 String garbage;
-String data; 
+//String data; 
 void setup() {
   // put your setup code here, to run once:
 Serial.begin(115200);
@@ -61,12 +61,12 @@ delay(100);
 }
 }
 */
-/*
+
 void loop() {
   // put your main code here, to run repeatedly:
   if (lora.available() > 0 )
   {
-    //myString = lora.readString(); 
+    myString = lora.readString(); 
     Serial.println("test" + myString);
     if (myString == "summon") {
       navigateWalker();
@@ -80,10 +80,8 @@ void loop() {
     delay(100); 
   }
 }
-*/
 
-
-
+/*
 void loop() {
   // put your main code here, to run repeatedly:
   if (lora.available() > 0 )
@@ -98,7 +96,7 @@ void loop() {
           summoned = true;
         }
     }
-    */
+    
     Serial.println("Software Serial:");
     Serial.println(data); 
   } else {
@@ -106,4 +104,4 @@ void loop() {
   }
 }
 
-
+*/
