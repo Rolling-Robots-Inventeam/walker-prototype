@@ -1,5 +1,9 @@
 #include <SoftwareSerial.h>
- 
+#include <Kalman.h>
+
+// Initialize the Kalman Filter
+Kalman kalmanX;
+
 SoftwareSerial lora(2,3);
 // Arduino Pin 2 goes to Lora TX
 // Arduino Pin 3 goes to Lora RX
@@ -34,6 +38,8 @@ while (!Serial) {
   }
 delay(1000);
 lora.setTimeout(250); 
+// Initialize the Kalman Filter
+kalmanX.setState(0, 0, 0, 0);
 }
 
 void navigateWalker() {
@@ -55,6 +61,7 @@ if ( lora.available() > 0 )
   myString = lora.readString(); 
   Serial.println("Software Serial:");
   Serial.println(myString); 
+  
 
 } else {
 delay(100); 
@@ -67,6 +74,12 @@ void loop() {
   if (lora.available() > 0 )
   {
     myString = lora.readString(); 
+    // Kalman Filter for the data
+    kalmanX.predict();
+    float measurement = myString.toFloat();
+    float estimatedX = kalmanX.updateEstimate(measurement);
+    Serial.println("Kalman Filter Output: " + String(estimatedX));
+    
     Serial.println("test" + myString);
     if (myString == "summon") {
       navigateWalker();
