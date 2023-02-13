@@ -2,7 +2,7 @@
 #include <Kalman.h>
 
 // Initialize the Kalman Filter
-Kalman kalmanX;
+//Kalman kalmanX;
 
 SoftwareSerial lora(2,3);
 // Arduino Pin 2 goes to Lora TX
@@ -42,6 +42,7 @@ lora.setTimeout(250);
 kalmanX.setState(0, 0, 0, 0);
 }
 
+
 void navigateWalker() {
   // move the walker a small amount
   int stepSize = 5; // adjust as needed
@@ -69,6 +70,7 @@ delay(100);
 }
 */
 
+
 void loop() {
   // put your main code here, to run repeatedly:
   if (lora.available() > 0 )
@@ -93,6 +95,8 @@ void loop() {
     delay(100); 
   }
 }
+
+
 
 /*
 void loop() {
