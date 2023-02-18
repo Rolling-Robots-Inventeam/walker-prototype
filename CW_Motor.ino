@@ -19,6 +19,17 @@
   *   - Serial connection to master
   */
 
+//-------------------------
+
+//#include <bluefruit.h>
+#include <VescUart.h>
+#include <SoftwareSerial.h>
+#include <stdlib.h>
+
+//-------------------------
+
+ bool debugresponse = true;
+
 
 //------------------------
 
@@ -33,62 +44,310 @@
 //int ANALOG5 = 19;
 
 // Digital
-int LeftDrive = 13;
-int RightDrive = 12;
-//int DIGITAL11 = 11;
+int Motor1_2 = 13;
+int Motor1_1 = 12;
+//int DIGITAL11= 11;
 //int DIGITAL10 = 10;
 //int DIGITAL9 = 9;
 //int DIGITAL7 = 7;
 //int DIGITAL5 = 5;
 
-//-------------------------
-
-
 
 
 // Motor Integration Start
 
-  const int bounds[2] = {0, 100};
+VescUart vescM1;
 
-  #include <Servo.h>
+SoftwareSerial vescSerial(Motor1_1, Motor1_2);
+  unsigned long start_time;
+  unsigned long now_time;
+  bool motor_running = false;
+  bool positive_RPM = false;
+  float speed = 0;
 
-  Servo driveR;
-  Servo driveL;
+//--------
 
-  void DriveSetup(){
-    driveR.attach(RightDrive, 1000, 2000);
-    driveL.attach(LeftDrive, 1000, 2000);
+  /*
+void readUART() {
+  if (vesc.getVescValues()) {
+
+    Serial.print("RPM: "); Serial.println(vesc.data.rpm);
+    Serial.print("inpVoltage: "); Serial.println(vesc.data.inpVoltage);
+    Serial.print("ampHours: "); Serial.println(vesc.data.ampHours);
+    Serial.print("tachometerAbs: "); Serial.println(vesc.data.tachometerAbs);
+
   }
-
-  void Drive(double Left, double Right){
-    driveR.writeMicroseconds(map(Left, bounds[0], bounds[1], 1000, 2000));
-    driveL.writeMicroseconds(map(Right, bounds[0], bounds[1], 1000, 2000));
+  else
+  {
+    Serial.println("Failed to get data!");
   }
+}
 
-// Motor Integration End
+  */
 
-
-
-
-// Serial Management Start
+// Motor Integration End 
 
 
 
-void SerialSetup(){
+
+
+
+
+// UART Management Start
+
+
+
+const unsigned int maxlength = 7;
+
+char command [maxlength];
+
+// 1 Purpose byte (Master > motor (drive controlling) or motor > master (sensor reading) )
+// 1 Location byte (Which device in the above category (which # motor, which sensor, etc.))
+// 3 Action bytes (What to do? Add some speed? Stop motors? Get X data?)
+// 1 Tail byte (for null character message ender)
+
+
+//--------
+
+void listBytes(){
+ for(int i=0; i<(maxlength-1); i++){
+        String indivbyte;
+        indivbyte = "Byte No. " + String(i) + " Is " + command[i];
+        Serial.println(indivbyte);
+      }
+}
+
+//--------
+
+float getMotorDuty(){
+  
+    String DutyString;
+    int i;
+    
+    if( command[2] == '-' ){i = 2;} else {i = 3;} 
+    //If the minus sign is there, include it. Else, cut it off (start on next index over)
+
+    while(i < 6){
+      DutyString = DutyString + command[i]; // built string out of character array
+      i++;    
+    }
+
+  return( "%0.2f", ( DutyString.toFloat() / 100 ) ); // Format for vesc motors
   
 }
 
+//--------
+
+// UART Management End
 
 
-// Serial Management End
+
+
+
+
 
 
 void setup() {
 
- 
+ Serial.begin(9600);
+
+ vescSerial.begin(9600);
+ vescM1.setSerialPort(&vescSerial);
+
+ Serial.println("Started!");
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+
 
 }
 
+
+
+
+
 void loop() {
 
+while (Serial.available() > 0){
+
+  //---------------------------
+
+  // ACQUIRE COMMAND
+
+  static unsigned int cmd_pos = 0;
+
+  char inByte = Serial.read();
+
+  if ( inByte != '\n' && ( cmd_pos < maxlength - 1) ) { 
+    command[cmd_pos] = inByte;
+    cmd_pos++;
+
+  }
+
+  //-------------
+  
+  else {
+    command[cmd_pos] = '\0';
+    Serial.print("Command Got!: ");
+    Serial.println(command);
+
+   
+
+  //---------------------------
+
+    
+/*
+ * Everything hereafter happens whenever a command is recieved
+ */
+  
+      bool didexecute = true;
+    
+      switch(command[0]){ // Case by case basis of the Purpose Byte
+
+      /* ------------------------------------------------------ *
+       * 
+       *  KEY for Command Index 0 ( Purpose Byte )
+       *  
+       *  1 -> send command of some sort to some motor
+       *  2 -> send command of some sort to some sensor
+       *  
+       *  Remember:  Case comparisons must be made with character type
+       * 
+       * ------------------------------------------------------ */
+
+
+     
+      case '1': 
+       /* ------------------------------------------------------ *
+        *  Purpose byte, case 1: Commanding Motors
+        * ------------------------------------------------------ */
+    
+        if(debugresponse) { Serial.println("Purpose: Motor Command"); }
+
+        /* ------------------------------------------------------ *
+         * 
+         *  KEY for Command Index 2 when Commanding Motors (Header of Action bytes)
+         *  
+         *  Implemented:
+         *  + -> Set motor duty, positive value
+         *  - -> Set motor duty, negative value
+         *  
+         *  Unimplemented:
+         *  / -> Disengage motors
+         *  ! -> Engage motors
+         * 
+         * ------------------------------------------------------ */
+
+        if (command[2] == '+' || command[2] == '-'){ // If command is to set the motor duty
+          
+          if(debugresponse) { Serial.println("Action: Set Duty"); }
+
+          float Duty = getMotorDuty();
+
+          if(debugresponse) { 
+            Serial.print("Location: ");
+            Serial.println(command[1]);
+            Serial.print("Motor duty: ");
+            Serial.println(Duty);
+          }
+
+          switch(command[1]){ // Location byte (motors), choose which motor to send to
+            case '1':
+              vescM1.setDuty(Duty);
+              if(debugresponse) { Serial.println("M1 Duty Set!"); }
+            break;
+
+            case '2':
+              //vescM2.setDuty(Duty);
+              if(debugresponse) { Serial.println("M2 Duty Set!"); }
+            break;
+            
+            case '3':
+              //vescM3.setDuty(Duty);
+              if(debugresponse) { Serial.println("M3 Duty Set!"); }
+            break;
+            
+            case '4':
+              //vescM4.setDuty(Duty);
+              if(debugresponse) { Serial.println("M4 Duty Set!"); }
+            break;
+
+            default: 
+              if(debugresponse) { Serial.println("Location: Unrecognized"); }
+              didexecute = false;      
+          }
+
+        } // if statement is to set motor duty
+
+
+        else if (command[2] == '/') { // If command is to disengage motors
+           if(debugresponse) { Serial.println("Action: Disengage"); }
+        }
+
+        else {
+          if(debugresponse) { Serial.println("Action: Unrecognized"); }
+          didexecute = false;
+        }
+
+        // -----
+     
+      break; // End of motor control
+
+
+
+     
+  
+      case '2':
+       /* ------------------------------------------------------ *
+        *  Purpose byte, case 2: Commanding Sensors
+        * ------------------------------------------------------ */
+      
+        if(debugresponse) { Serial.println("Purpose: Sensor Command"); }
+        
+      break; // End of sensor control
+
+      
+
+      default: 
+        if(debugresponse) { Serial.println("Purpose: Unrecognized"); }
+        didexecute = false;
+       /* ------------------------------------------------------ *
+        *  Purpose byte, default case: Unknown Command
+        * ------------------------------------------------------ */
+      } 
+    
+ 
+  
+
+  //---------------------------
+
+  if (didexecute == true)  { // If it works, blinks solid for 1 second
+    
+    Serial.println("Command executed!"); 
+
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    
+  }
+  
+  else { 
+    
+    Serial.println("Command failed to execute!"); 
+    
+    for(int i=0; i<6; i++){
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      delay(165);
+      }
+  }
+
+  //---------------------------
+
+  Serial.println(""); 
+  cmd_pos = 0; // Await next command
+  
+  }
+  
+  } 
+ 
 }
