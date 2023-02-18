@@ -44,8 +44,8 @@
 //int ANALOG5 = 19;
 
 // Digital
-int Motor1_2 = 13;
-int Motor1_1 = 12;
+int M1tx = 13; //tx is white
+int M1rx = 12; //rx is purple
 //int DIGITAL11= 11;
 //int DIGITAL10 = 10;
 //int DIGITAL9 = 9;
@@ -57,14 +57,8 @@ int Motor1_1 = 12;
 // Motor Integration Start
 
 VescUart vescM1;
-
-SoftwareSerial vescSerial(Motor1_1, Motor1_2);
-  unsigned long start_time;
-  unsigned long now_time;
-  bool motor_running = false;
-  bool positive_RPM = false;
-  float speed = 0;
-
+SoftwareSerial vescSerial(M1rx, M1tx);
+ 
 //--------
 
   /*
@@ -187,10 +181,13 @@ while (Serial.available() > 0){
   //-------------
   
   else {
+    
     command[cmd_pos] = '\0';
-    Serial.print("Command Got!: ");
-    Serial.println(command);
-
+    
+    if(debugresponse) { 
+      Serial.print("Command Got!: "); 
+      Serial.println(command);
+    }
    
 
   //---------------------------
@@ -282,6 +279,7 @@ while (Serial.available() > 0){
 
         else if (command[2] == '/') { // If command is to disengage motors
            if(debugresponse) { Serial.println("Action: Disengage"); }
+           // do whatever disengage entails
         }
 
         else {
@@ -303,7 +301,7 @@ while (Serial.available() > 0){
         * ------------------------------------------------------ */
       
         if(debugresponse) { Serial.println("Purpose: Sensor Command"); }
-        
+
       break; // End of sensor control
 
       
@@ -323,7 +321,8 @@ while (Serial.available() > 0){
 
   if (didexecute == true)  { // If it works, blinks solid for 1 second
     
-    Serial.println("Command executed!"); 
+    
+    if(debugresponse) { Serial.println("Command executed!"); }
 
     digitalWrite(LED_BUILTIN, HIGH);
     delay(1000);
@@ -333,13 +332,15 @@ while (Serial.available() > 0){
   
   else { 
     
-    Serial.println("Command failed to execute!"); 
+    if(debugresponse) { Serial.println("Command failed to execute!"); }
     
     for(int i=0; i<6; i++){
       digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
       delay(165);
       }
   }
+
+
 
   //---------------------------
 
