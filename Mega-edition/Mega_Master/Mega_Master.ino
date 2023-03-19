@@ -326,16 +326,16 @@ void setupLoRa(){
 
 // ------- Control Start -------
 
-  // Demonstration Contrller
-
-    int maxspeed = 5;
-
     int threshUltrasonic = 60; // (reading of about 5 inches)
     int threshPressure = 300; // (From about 10, nothing, to about 1000, full grip)
     int threshRSSI = -40; // (From -90, furthest, to -30, closest) VERIFY
     int threshIR = 40; // (6 inches?) 
-    
+
+  // Demonstration Contrller
+   
     void DemoControl(){
+      
+      const int maxspeed = 5;
 
       static int L = 0; // Establish speed variables
       static int R  = 0;
@@ -368,6 +368,35 @@ void setupLoRa(){
         Serial.print ("Left target speed is ");
         Serial.print (targetL);
         Serial.print (" , left motor is running at ");
+        Serial.println (L);
+        Serial.println ("");
+
+      }
+    }
+  
+   void FacilityControl(){
+      
+      const int maxspeed = 5;
+
+      static int Speed  = 0;
+
+      int target = maxSpeed;
+
+      // Target Shifting
+        if ( distanceUltrasonic < threshUltrasonic || pressureReadingLeft < threshPressure || pressureReadingRight < threshPressure ) { // Anything to stop both motors
+          target = 0; 
+        }
+      
+    
+      Speed = Speed + between( (target - Speed), -2, 1 );
+    
+      setMotorSpeed(Speed, Speed);
+
+      if (debugresponse) {
+      
+        Serial.print ("Target speed is ");
+        Serial.print (targetL);
+        Serial.print (" , Motors are running at ");
         Serial.println (L);
         Serial.println ("");
 
