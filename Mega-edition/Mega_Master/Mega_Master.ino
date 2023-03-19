@@ -21,6 +21,12 @@
 /* --- Latest Update Log --- 
 
   Key: '-' indicates notes, '*' indicates issues that should be looked at
+  
+  ---
+  
+  Date: 3/19/23
+  
+  Alex. Doing channel allocations.
 
   Date: 3/15/23
 
@@ -61,21 +67,25 @@
 
     // Digital and Serial
 
-      int UltrasonicTrig = 2;
-      int UltrasonicEcho = 22;
+      int UltrasonicTrig = 27;
+      int UltrasonicEcho = 28;
 
         /* All parenthesis in rx -> tx order
+        - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
           Motors:
-           Left: Serial (0, 1)  
-           Right: Serial1 (19, 18)
+           Left: Serial2
+           Right: Serial3
           BLE Sensors: 
-           No. 1: Serial2 (17, 16) 
-           No. 2: Serial3 (15, 14) 
-           No. 3: Bonus software serial (6, 7)
+           No. 1: Serial0
+           No. 2: Serial1
+           No. 3: Bonus software serial (22, 23)
+          LoRa:
+           Software serial (30,31)
 
          Only software serial pins have to be specified. All others are set by default by Arduino */
     
-      SoftwareSerial SoftSerialBLE(6, 7);
+      SoftwareSerial SoftSerialBLE(22, 23);
+      SoftwareSerial SoftSerialLoRa(30, 31);
 
 // ------- Setup End -------
 
@@ -104,11 +114,11 @@
 
   void setupMotors(){
 
-    Serial.begin(vescbaudrate);
-    vescML.setSerialPort(&Serial);
+    Serial2.begin(vescbaudrate);
+    vescML.setSerialPort(&Serial2);
 
-    Serial1.begin(vescbaudrate);
-    vescMR.setSerialPort(&Serial1);
+    Serial3.begin(vescbaudrate);
+    vescMR.setSerialPort(&Serial3);
   }
 
   void setMotorSpeed(int left, int right){
@@ -197,8 +207,8 @@
 
 
   void setupBLE(){
-    Serial2.begin(9600);
-    Serial3.begin(9600);
+    Serial.begin(9600);
+    Serial1.begin(9600);
     SoftSerialBLE.begin(9600);
   }
 
@@ -304,6 +314,16 @@
 
 
 
+// ------- LoRa Start -------
+
+void setupLoRa(){
+    SoftSerialLoRa.begin(9600);
+  }
+
+
+// ------- LoRa End -------
+
+
 // ------- Control Start -------
 
   // Demonstration Contrller
@@ -372,6 +392,7 @@ void setup() {
 
   setupMotors();
   setupBLE();
+  setupLoRa(); // Just starts connection for now
 
   Serial.println("Mega Master Start!");
 
