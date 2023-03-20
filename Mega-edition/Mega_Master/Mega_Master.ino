@@ -121,9 +121,9 @@
     vescMR.setSerialPort(&Serial3);
   }
 
-  void setMotorSpeed(int left, int right){
-    vescML.setDuty(left);
-    vescMR.setDuty(right);
+  void setMotorSpeed(float left, float right){
+    vescML.setDuty(left / 100);
+    vescMR.setDuty(right / 100);
   }
 
 // ------- Motor End -------
@@ -327,7 +327,7 @@ void setupLoRa(){
 // ------- Control Start -------
 
     int threshUltrasonic = 60; // (reading of about 5 inches)
-    int threshPressure = 300; // (From about 10, nothing, to about 1000, full grip)
+    int threshPressure = 500; // (From about 10, nothing, to about 1000, full grip)
     int threshRSSI = -40; // (From -90, furthest, to -30, closest) VERIFY
     int threshIR = 40; // (6 inches?) 
 
@@ -373,18 +373,20 @@ void setupLoRa(){
 
       }
     }
+
+    
   
    void FacilityControl(){
       
-      const int maxspeed = 5;
+      const int maxspeed = 6;
 
       static int Speed  = 0;
 
-      int target = maxSpeed;
+      int target = 0;
 
       // Target Shifting
-        if ( distanceUltrasonic < threshUltrasonic || pressureReadingLeft < threshPressure || pressureReadingRight < threshPressure ) { // Anything to stop both motors
-          target = 0; 
+        if ( distanceUltrasonic > threshUltrasonic ) { // Anything to stop both motors
+          target = maxspeed; 
         }
       
     
@@ -395,9 +397,9 @@ void setupLoRa(){
       if (debugresponse) {
       
         Serial.print ("Target speed is ");
-        Serial.print (targetL);
-        Serial.print (" , Motors are running at ");
-        Serial.println (L);
+        Serial.print (target);
+        Serial.print (" , Motor duty is set to ");
+        Serial.println (Speed);
         Serial.println ("");
 
       }
@@ -432,9 +434,9 @@ void setup() {
 void loop() {
 
   // GET SENSOR DATA
-    loopUltrasonic();
-    loopInfrared();
-    loopPressure();
+   loopUltrasonic();
+   loopInfrared();
+   loopPressure();
 
     delay(100);
   //
@@ -442,9 +444,9 @@ void loop() {
 
 
   //=====---===== CONTROLLER =====---=====
-  
-    DemoControl();
-  
+
+  FacilityControl();
+ 
   //=====---===== CONTROLLER =====---=====
   
 
