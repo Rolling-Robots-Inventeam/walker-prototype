@@ -551,7 +551,7 @@ switch( usermode ):
     bool withinrange = false;
 
     while (withinrange == false){
-
+      UpdateData();
       // Do whole  navigation algorithm here
 
       /* eventually meeting the RSSI condition:
