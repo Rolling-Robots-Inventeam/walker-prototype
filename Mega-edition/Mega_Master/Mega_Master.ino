@@ -190,7 +190,7 @@ void retractActuators(){
   int distanceIRLeft;
   int distanceIRRight;
 
-  void loopInfrared() {
+  void loopIR() {
     float voltsL = analogRead(LeftInfared)*0.0048828125;  // value from sensor * (5/1024)
     distanceIRLeft = 13*pow(voltsL, -1); // worked out from datasheet graph
   
@@ -317,7 +317,7 @@ void retractActuators(){
             rssiL = ( atoi( RSSIString.c_str() ) );
 
             if (debugresponse) { 
-              Serial.print("GetRSSIL - Value: ")
+              Serial.print("GetRSSIL - Value: ");
               Serial.println(rssiL); 
               }
 
@@ -360,7 +360,7 @@ void retractActuators(){
             rssiR = ( atoi( RSSIString.c_str() ) );
 
             if (debugresponse) { 
-              Serial.print("GetRSSIR - Value: ")
+              Serial.print("GetRSSIR - Value: ");
               Serial.println(rssiR); 
               }
 
@@ -403,7 +403,7 @@ void retractActuators(){
             rssiF = ( atoi( RSSIString.c_str() ) );
 
             if (debugresponse) { 
-              Serial.print("GetRSSIF - Value: ")
+              Serial.print("GetRSSIF - Value: ");
               Serial.println(rssiF); 
               }
           
@@ -428,7 +428,7 @@ void retractActuators(){
 
   void UpdateData(){
     loopUltrasonic();
-    loopInfared();
+    loopIR();
     loopPressure();
     getRSSIF();
     getRSSIL();
@@ -517,7 +517,7 @@ void loop() {
 
 
 
-switch( usermode ):
+switch( usermode ){
 
   case 3: // Debug mode
     Debugger();
@@ -567,6 +567,8 @@ switch( usermode ):
   break;
 
 
+
+}
 
 // --- === ---
 }
