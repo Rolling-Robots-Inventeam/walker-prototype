@@ -1,11 +1,5 @@
-/* PROGRAM INFORMATION
- *  
- * 
- *  This is the comprehensive arudino sketch for the 2022-2023 Rolling Robots InvenTeam's Walker Project.
- *  It features, predominantly, the walker's algorithm for navigating rooms to get to its user.
- *  It also has basic logic for automatic braking.
- * 
- *  This sketch is designed to be as liquid as possible with hardware. All inputs and outputs should be customizable and easily integrated.
+/*
+ * CORRECT EDITION 4/2/23
  */
 
 
@@ -56,6 +50,12 @@
     bool decrease_spd = false;
 
     int telem_instance_count = 0;
+
+    int rssiF = 0;
+    int rssiL = 0;
+    int rssiR = 0;
+
+    
   // Pins
     // Analog
       int LeftHandbrake = 14;   // A0
@@ -76,16 +76,16 @@
            Left: Serial2
            Right: Serial3
           BLE Sensors: 
-           No. 1: Serial0
-           No. 2: Serial1
-           No. 3: Bonus software serial (22, 23)
+           No. 1: Serial0 (Front)
+           No. 2: Serial1 (Right)
+           No. 3: Bonus software serial (22, 23) (Left)
           LoRa:
            Software serial (30,31)
 
          Only software serial pins have to be specified. All others are set by default by Arduino */
     
-      SoftwareSerial SoftSerialBLE(22, 23);
-      SoftwareSerial SoftSerialLoRa(30, 31);
+      SoftwareSerial SoftSerialBLE(52, 53);
+      SoftwareSerial SoftSerialLoRa(50, 51);
 
 // ------- Setup End -------
 
@@ -112,14 +112,6 @@
     }
   }
 
-  void setupMotors(){
-
-    Serial2.begin(vescbaudrate);
-    vescML.setSerialPort(&Serial2);
-
-    Serial3.begin(vescbaudrate);
-    vescMR.setSerialPort(&Serial3);
-  }
 
   void setMotorSpeed(float left, float right){
     vescML.setDuty(left / 100);
@@ -205,17 +197,13 @@
 
 // ------- Bluetooth Serial Start -------
 
-
-  void setupBLE(){
-    Serial.begin(9600);
-    Serial1.begin(9600);
-    SoftSerialBLE.begin(9600);
-  }
-
- 
   const unsigned int maxlength = 7;
 
   char telemetry[maxlength];
+
+  char tlmF[maxlength];
+  char tlmL[maxlength];
+  char tlmR[maxlength];
 
   //-----
 
@@ -247,80 +235,141 @@
     }
   }
 
+// ---===---
 
-  float getBLERSSI() {
+  void getRSSIL() { //Comprehensive acquisition of RSSI
 
-    String RSSIString;
-    int i;
+    // --- DEVELOPMENT OF INFO ---
+    // Serial command (Individual bytes)
+    // TLM buffer (Full length command)
+    // RSSIString (Extracted RSSI value, string form)
+    // rssi (RSSI value, float form)
+    
+    //Serial.listen(); //find serial value
 
-    if (telemetry[2] == '-') {
-    i = 2;
-    } else {
-    i = 3;
-    }
-    //If the minus sign is there, include it. Else, cut it off (start on next index over)
-
-    while (i < 6) {
-      RSSIString = RSSIString + telemetry[i];  // built string out of character array
-      i++;
-    }
-
-    return ("%0.2f", (RSSIString.toFloat()));  // Format for vesc motors
-  }
-
-
-  void parseSerialTelemetry() {
-
-    if (debugresponse) {
-      Serial.print("Command Got!: ");
-      Serial.println(telemetry);
-    }
-
-    bool didexecute = true;
-
-    if (telemetry[0] == '8') {  // Is redundant? Or is it useful to have a confirmation that this is correctly-formatted data?
+    while (SoftSerialBLE.available() > 0) { //If there are available bytes...
+      
+      static unsigned int tlm_pos = 0; //start at index zero
+       
+      char inByte = SoftSerialBLE.read(); //get the next byte
+      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
+        tlmL[tlm_pos] = inByte; //add to buffer
+        tlm_pos++; //set index up
+      }
+      else { //if we're at the end...
         
-      if (debugresponse) { Serial.println("Purpose: BLE telemetry"); }
+        tlmL[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
 
-        if (telemetry[2] == '+' || telemetry[2] == '-') {
-          if (debugresponse) { Serial.println("Action: Read RSSI"); }
-            float rssi = getBLERSSI();
-            if (debugresponse) {
-              Serial.print("Location: ");
-              Serial.println(telemetry[1]);
-              Serial.print("BLE RSSI: ");
-              Serial.println(rssi);
+        // ---
+
+          if (tlmL[2] == '+' || tlmL[2] == '-') { //If thing is valid
+  
+            String RSSIString; //start up buffer string
+            int i; if (tlmL[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
+            while (i < 6) {
+              RSSIString = RSSIString + tlmL[i];  // built string out of character array
+              i++;
             }
-        } 
+            //rssiL = ("%0.2f", ( RSSIString.toFloat() ) ); 
 
-        else {
-          if (debugresponse) { Serial.println("Action: Unrecognized"); }
-            didexecute = false;
-          }
+            rssiL = ( atoi( RSSIString.c_str() ) );
 
-      }
+            if (debugresponse) { Serial.println(rssiL); }
           
-      else{
-        if (debugresponse) { Serial.println("Purpose: Unrecognized"); }
-        didexecute = false;
-          /* ------------------------------------------------------ *
-          *  Purpose byte, default case: Unknown Command
-          * ------------------------------------------------------ */
-      }
-  }
+          } else {} //invalid
+        
+        // ---
+        
+        tlm_pos = 0;  // Await next command
+        
+      }   }   }
 
+// ---===---
+
+   void getRSSIR() { //Comprehensive acquisition of RSSI
+
+    while (Serial1.available() > 0) { //If there are available bytes...
+      
+      static unsigned int tlm_pos = 0; //start at index zero
+       
+      char inByte = Serial1.read(); //get the next byte
+      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
+        tlmR[tlm_pos] = inByte; //add to buffer
+        tlm_pos++; //set index up
+      }
+      else { //if we're at the end...
+        
+        tlmR[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
+
+        // ---
+
+          if (tlmR[2] == '+' || tlmR[2] == '-') { //If thing is valid
+  
+            String RSSIString; //start up buffer string
+            int i; if (tlmR[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
+            while (i < 6) {
+              RSSIString = RSSIString + tlmR[i];  // built string out of character array
+              i++;
+            }
+           
+            rssiR = ( atoi( RSSIString.c_str() ) );
+
+            if (debugresponse) { Serial.println(rssiR); }
+          
+          } else {} //invalid
+        
+        // ---
+        
+        tlm_pos = 0;  // Await next command
+        
+      }   }   }
+
+// ---===---
+
+      void getRSSIF() { //Comprehensive acquisition of RSSI
+
+    while (Serial.available() > 0) { //If there are available bytes...
+      
+      static unsigned int tlm_pos = 0; //start at index zero
+       
+      char inByte = Serial.read(); //get the next byte
+      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
+        tlmF[tlm_pos] = inByte; //add to buffer
+        tlm_pos++; //set index up
+      }
+      else { //if we're at the end...
+        
+        tlmF[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
+
+        // ---
+
+          if (tlmF[2] == '+' || tlmF[2] == '-') { //If thing is valid
+  
+            String RSSIString; //start up buffer string
+            int i; if (tlmF[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
+            while (i < 6) {
+              RSSIString = RSSIString + tlmF[i];  // built string out of character array
+              i++;
+            }
+           
+            rssiF = ( atoi( RSSIString.c_str() ) );
+
+            if (debugresponse) { Serial.println(rssiF); }
+          
+          } else {} //invalid
+        
+        // ---
+        
+        tlm_pos = 0;  // Await next command
+        
+      }   }   }
+          
 
 // ------- Bluetooth Serial End -------
 
 
 
 // ------- LoRa Start -------
-
-void setupLoRa(){
-    SoftSerialLoRa.begin(9600);
-  }
-
-
 // ------- LoRa End -------
 
 
@@ -421,9 +470,20 @@ void setup() {
   pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
   pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
 
-  setupMotors();
-  setupBLE();
-  setupLoRa(); // Just starts connection for now
+  // Motor Setup
+    Serial2.begin(vescbaudrate);
+    vescML.setSerialPort(&Serial2);
+
+    Serial3.begin(vescbaudrate);
+    vescMR.setSerialPort(&Serial3);
+  
+  // BLE Setup
+    Serial.begin(9600);
+    Serial1.begin(9600);
+    SoftSerialBLE.begin(9600);
+
+  // LoRa Setup
+    SoftSerialLoRa.begin(9600);
 
   Serial.println("Mega Master Start!");
 
@@ -434,9 +494,9 @@ void setup() {
 void loop() {
 
   // GET SENSOR DATA
-   loopUltrasonic();
-   loopInfrared();
-   loopPressure();
+  // loopUltrasonic();
+  // loopInfrared();
+  // loopPressure();
 
     delay(100);
   //
@@ -445,7 +505,10 @@ void loop() {
 
   //=====---===== CONTROLLER =====---=====
 
-  FacilityControl();
+  //FacilityControl();
+
+  getRSSIL(); 1`
+  Serial.println(rssiL);
  
   //=====---===== CONTROLLER =====---=====
   
@@ -454,11 +517,7 @@ void loop() {
   // ACQUIRE TELEMETRY
   delay(300);
 
-
-
-  telem_instance_count = telem_instance_count + 1;
- 
-  if(telem_instance_count < 6){
+  /*
     SoftSerialBLE.listen();
     while (SoftSerialBLE.available() > 0) {
       static unsigned int tlm_pos = 0;
@@ -474,8 +533,21 @@ void loop() {
         tlm_pos = 0;  // Await next command
       }
     }
+  
+}
+*/
+
+
+/*
+
+  telem_instance_count = telem_instance_count + 1;
+ 
+  if(telem_instance_count < 6){
+    
   } else {
     telem_instance_count = 0;
   }
+
+ */
   
 }
