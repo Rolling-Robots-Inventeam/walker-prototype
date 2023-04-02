@@ -17,6 +17,14 @@
   Key: '-' indicates notes, '*' indicates issues that should be looked at
   
   ---
+
+  Date: 4/2/23
+
+  Alex. We're doing this thing.
+  - Expand the RSSI function to work with all three serial ports.
+  - Isolate redundant telemetry functions. Comment out until it's verified the code works: then remove.
+  - Incorporate actuators? into hardware scheme.
+  - Start on Leo's nav algorithm.
   
   Date: 3/19/23
   
@@ -45,6 +53,13 @@
     int vescbaudrate = 9600;
 
   // Variables
+
+    int usermode = 1;
+    // 1 is standard use mode (automatic brake, otherwise a dead walker) (default mode)
+    // 2 is room nav mode. Starts when beacon ping is recieved, ends when RSSI indicates walker is within ~3 feet of user.
+    // 3 is debug mode, must be activated manually in-code or through some other method
+
+
     int spd_count = 0;
     bool increase_spd = true;
     bool decrease_spd = false;
@@ -58,17 +73,19 @@
     
   // Pins
     // Analog
-      int LeftHandbrake = 14;   // A0
-      int RightHandbrake = 15;  // A1
-      int LeftInfared = 16;     // A2
-      int RightInfared = 17;    // A3
+      const int LeftHandbrake = 14;   // A0
+      const int RightHandbrake = 15;  // A1
+      const int LeftInfared = 16;     // A2
+      const int RightInfared = 17;    // A3
       //int ANALOG4 = 18; // A4
       //int ANALOG5 = 19; // A5
 
     // Digital and Serial
 
-      int UltrasonicTrig = 27;
-      int UltrasonicEcho = 28;
+      const int UltrasonicTrig = 27;
+      const int UltrasonicEcho = 28;
+      const int FOR_RELAY_PIN = 3;
+      const int REV_RELAY_PIN = 4;
 
         /* All parenthesis in rx -> tx order
         - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
@@ -119,6 +136,22 @@
   }
 
 // ------- Motor End -------
+
+
+
+// ------- Actuator Start -------
+
+void extendActuators(){
+  digitalWrite(FOR_RELAY_PIN, HIGH);
+  digitalWrite(REV_RELAY_PIN, LOW);
+}
+
+void retractActuators(){
+  digitalWrite(FOR_RELAY_PIN, LOW);
+  digitalWrite(REV_RELAY_PIN, HIGH);
+}
+
+// ------- Actuator End -------
 
 
 
@@ -237,6 +270,15 @@
 
 // ---===---
 
+/*
+ RSSI Functions:
+ - Simply run em' once in the update cycle (ideally)
+ - They output to global variables 'rssiL', 'rssiR', and 'rssiF'
+ - use variables at your discretion
+*/
+
+// ---===---
+
   void getRSSIL() { //Comprehensive acquisition of RSSI
 
     // --- DEVELOPMENT OF INFO ---
@@ -258,9 +300,9 @@
       }
       else { //if we're at the end...
         
-        tlmL[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
+        tlmL[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???) (a.k.a with known length)
 
-        // ---
+        // --- 
 
           if (tlmL[2] == '+' || tlmL[2] == '-') { //If thing is valid
   
@@ -274,8 +316,11 @@
 
             rssiL = ( atoi( RSSIString.c_str() ) );
 
-            if (debugresponse) { Serial.println(rssiL); }
-          
+            if (debugresponse) { 
+              Serial.print("GetRSSIL - Value: ")
+              Serial.println(rssiL); 
+              }
+
           } else {} //invalid
         
         // ---
@@ -286,7 +331,7 @@
 
 // ---===---
 
-   void getRSSIR() { //Comprehensive acquisition of RSSI
+   void getRSSIR() { 
 
     while (Serial1.available() > 0) { //If there are available bytes...
       
@@ -314,8 +359,11 @@
            
             rssiR = ( atoi( RSSIString.c_str() ) );
 
-            if (debugresponse) { Serial.println(rssiR); }
-          
+            if (debugresponse) { 
+              Serial.print("GetRSSIR - Value: ")
+              Serial.println(rssiR); 
+              }
+
           } else {} //invalid
         
         // ---
@@ -326,7 +374,7 @@
 
 // ---===---
 
-      void getRSSIF() { //Comprehensive acquisition of RSSI
+   void getRSSIF() { 
 
     while (Serial.available() > 0) { //If there are available bytes...
       
@@ -354,7 +402,10 @@
            
             rssiF = ( atoi( RSSIString.c_str() ) );
 
-            if (debugresponse) { Serial.println(rssiF); }
+            if (debugresponse) { 
+              Serial.print("GetRSSIF - Value: ")
+              Serial.println(rssiF); 
+              }
           
           } else {} //invalid
         
@@ -375,57 +426,18 @@
 
 // ------- Control Start -------
 
+  void UpdateData(){
+    loopUltrasonic();
+    loopInfared();
+    loopPressure();
+    getRSSIF();
+    getRSSIL();
+    getRSSIR();
+  }
+
     int threshUltrasonic = 60; // (reading of about 5 inches)
-    int threshPressure = 500; // (From about 10, nothing, to about 1000, full grip)
-    int threshRSSI = -40; // (From -90, furthest, to -30, closest) VERIFY
-    int threshIR = 40; // (6 inches?) 
-
-  // Demonstration Contrller
-   
-    void DemoControl(){
-      
-      const int maxspeed = 5;
-
-      static int L = 0; // Establish speed variables
-      static int R  = 0;
-
-      int targetL = maxspeed; // Start by trying to run motors at full
-      int targetR = maxspeed;
-
-      // Target Shifting
-        if ( distanceUltrasonic < threshUltrasonic || pressureReadingLeft < threshPressure || pressureReadingRight < threshPressure ) { // Anything to stop both motors
-          targetL = 0; 
-          targetR = 0; 
-        }
-
-        if ( distanceIRLeft < threshIR ) { 
-          targetL = 0; 
-        }
-
-        if ( distanceIRRight < threshIR ) { 
-          targetR = 0; 
-        }
-      //
-    
-      L = L + between( (targetL - L), -2, 1 ); // Tries to go to target speed, limited in set increments. Works with decimals and not-nice fractions.
-      R = R + between( (targetR - R), -2, 1 ); // Discrepancy in absolute value of down/up increments is the relative rate of deccel / accel. Here, deccelerates twice as fast.
-
-      setMotorSpeed(L, R);
-
-      if (debugresponse) {
-      
-        Serial.print ("Left target speed is ");
-        Serial.print (targetL);
-        Serial.print (" , left motor is running at ");
-        Serial.println (L);
-        Serial.println ("");
-
-      }
-    }
-
-    
   
-   void FacilityControl(){
+  void Debugger(){
       
       const int maxspeed = 6;
 
@@ -454,13 +466,19 @@
       }
     }
 
-  // ---
-
 // ------- Control End -------
 
 
 
 // ------- Nav Start -------
+
+
+
+
+
+
+
+
 // ------- Nav End -------
 
 
@@ -469,6 +487,9 @@ void setup() {
 
   pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
   pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
+
+  pinMode(FOR_RELAY_PIN, OUTPUT);
+  pinMode(REV_RELAY_PIN, OUTPUT);
 
   // Motor Setup
     Serial2.begin(vescbaudrate);
@@ -490,64 +511,63 @@ void setup() {
 }
 
 
-
+// --- === ---
 void loop() {
-
-  // GET SENSOR DATA
-  // loopUltrasonic();
-  // loopInfrared();
-  // loopPressure();
-
-    delay(100);
-  //
+// --- === ---
 
 
 
-  //=====---===== CONTROLLER =====---=====
+switch( usermode ):
 
-  //FacilityControl();
-
-  getRSSIL(); 1`
-  Serial.println(rssiL);
- 
-  //=====---===== CONTROLLER =====---=====
-  
+  case 3: // Debug mode
+    Debugger();
+    delay(500);
+  break;
 
 
-  // ACQUIRE TELEMETRY
-  delay(300);
 
-  /*
-    SoftSerialBLE.listen();
-    while (SoftSerialBLE.available() > 0) {
-      static unsigned int tlm_pos = 0;
-      char inByte = SoftSerialBLE.read();
-      if (inByte != '\n' && (tlm_pos < maxlength - 1)) {
-        telemetry[tlm_pos] = inByte;
-        tlm_pos++;
-      }
-      else {
-        telemetry[tlm_pos] = '\0';
-        parseSerialTelemetry();
-        Serial.println("");
-        tlm_pos = 0;  // Await next command
-      }
-    }
-  
-}
-*/
+  default: // User control mode (1)
 
+    bool pingedbybeacon = false;
 
-/*
+    /*
 
-  telem_instance_count = telem_instance_count + 1;
- 
-  if(telem_instance_count < 6){
+      Do user-related stuff
+      - Activate autobrake
+      - Listen out for watch signal
     
-  } else {
-    telem_instance_count = 0;
-  }
+    */
 
- */
-  
+    if (pingedbybeacon){
+      usermode = 2;
+    }
+
+  break;
+
+
+
+  case 2: // Room navigation mode
+
+    bool withinrange = false;
+
+    while (withinrange == false){
+
+      // Do whole  navigation algorithm here
+
+      /* eventually meeting the RSSI condition:
+       withinrange = true;
+      */
+
+      delay(500);
+
+    }
+
+    usermode = 1;
+
+  break;
+
+
+
+// --- === ---
 }
+// --- === ---
