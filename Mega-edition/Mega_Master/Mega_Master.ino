@@ -178,7 +178,7 @@ void retractActuators(){
     distanceUltrasonic = duration * 0.034 / 2; // Speed of sound wave divided by 2 (go and back)
 
     if ( debugresponse ) { 
-      Serial.print ( "Ultrasonic distance: " );
+      Serial.print ( "loopUltrasonic: Ultrasonic distance: " );
       Serial.println ( distanceUltrasonic );
     }
   
@@ -198,7 +198,7 @@ void retractActuators(){
     distanceIRRight = 13*pow(voltsR, -1); // worked out from datasheet graph
   
     if ( debugresponse ) { 
-      Serial.print ( "Infared distances: Left: " );
+      Serial.print ( "loopIR - Infared distances: Left: " );
       Serial.print ( distanceIRLeft );
       Serial.print ( " Right: " );
       Serial.println ( distanceIRRight );
@@ -216,7 +216,7 @@ void retractActuators(){
     pressureReadingRight = analogRead(RightHandbrake);
   
     if ( debugresponse ) { 
-      Serial.print ( "Pressure reading: Left: " );
+      Serial.print ( "loopPressure - Pressure reading: Left: " );
       Serial.print ( pressureReadingLeft );
       Serial.print ( " Right: " );
       Serial.println ( pressureReadingRight );
@@ -457,7 +457,7 @@ void retractActuators(){
 
       if (debugresponse) {
       
-        Serial.print ("Target speed is ");
+        Serial.print ("Debug Controller - Target speed is ");
         Serial.print (target);
         Serial.print (" , Motor duty is set to ");
         Serial.println (Speed);
@@ -554,7 +554,7 @@ switch( usermode ){
       UpdateData();
       // Do whole  navigation algorithm here
 
-      /* eventually meeting the RSSI condition:
+      /* eventually meeting the RSSI condition:33
        withinrange = true;
       */
 
