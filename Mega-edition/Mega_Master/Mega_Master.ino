@@ -54,10 +54,6 @@
 
   // Variables
 
-    int usermode = 1;
-    // 1 is standard use mode (automatic brake, otherwise a dead walker) (default mode)
-    // 2 is room nav mode. Starts when beacon ping is recieved, ends when RSSI indicates walker is within ~3 feet of user.
-    // 3 is debug mode, must be activated manually in-code or through some other method
 
 
     int spd_count = 0;
@@ -511,64 +507,63 @@ void setup() {
 }
 
 
+
+   bool break;
+   int reason; // it switches to several other loops.
+    // 1 is room nav
+    // 2 is debug looping
+    // Anything else does nothing, and maybe logs an error message for now.
+
+    // After the reason is taken care of, break is reset, and the main business comes
+
+
 // --- === ---
 void loop() {
 // --- === ---
 
+// UpdateData();
+ break == false;
+ reason = 0;
+  
+ do { // Run the user navigation
 
+  // If condition met:
+  // break = true;
+  // set reason to specific number
+  delay(500);
 
-switch( usermode ){
+ } while (break == false);
 
-  case 3: // Debug mode
-    Debugger();
-    delay(500);
-  break;
+ switch(reason):
 
+  case 1: // Navigation
+    bool targettreached = false;
+    do {
 
-
-  default: // User control mode (1)
-
-    bool pingedbybeacon = false;
-
-    /*
-
-      Do user-related stuff
-      - Activate autobrake
-      - Listen out for watch signal
-    
-    */
-
-    if (pingedbybeacon){
-      usermode = 2;
-    }
-
-  break;
-
-
-
-  case 2: // Room navigation mode
-
-    bool withinrange = false;
-
-    while (withinrange == false){
-      UpdateData();
-      // Do whole  navigation algorithm here
-
-      /* eventually meeting the RSSI condition:33
-       withinrange = true;
-      */
-
+      // NAVVVV
+      // something that sets targetreached to true
       delay(500);
 
-    }
-
-    usermode = 1;
+    } while ( targetreached == false );
 
   break;
 
 
 
-}
+  case 2: // Debugging
+    while(1){
+      Debugger();
+      delay(500);
+      // stop whenever??
+    }
+  break;
+
+
+
+  default: // What??
+    // Log error message
+    delay(500);
+  break;
 
 // --- === ---
 }
