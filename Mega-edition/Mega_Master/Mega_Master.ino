@@ -14,9 +14,9 @@
 
 /* --- Latest Update Log --- 
 
-  Key: '-' indicates notes, '*' indicates issues that should be looked at
-  
-  ---
+  Date: 4/16/23
+
+  Alex. Trying to add Vesc data.
 
   Date: 4/2/23
 
@@ -53,8 +53,6 @@
     int vescbaudrate = 9600;
 
   // Variables
-
-
 
     int spd_count = 0;
     bool increase_spd = true;
@@ -109,6 +107,9 @@
   VescUart vescML;
   VescUart vescMR;
 
+  int oldSpeedL = 0;
+  int oldSpeedR = 0;
+
   float getMotorRPM(VescUart vesc) {
     if (vesc.getVescValues()) {
       float motor_rpm = vesc.data.rpm;
@@ -128,8 +129,37 @@
 
   void setMotorSpeed(float left, float right){
     vescML.setDuty(left / 100);
-    vescMR.setDuty(right / 100);
+    vescMR.setDuty(right / 100); 
   }
+
+  void setMotorSpeedBetter(float left, float right){
+    if (left != oldSpeedL) {
+  
+      vescML.setDuty(left / 100);
+      oldSpeedL = left;
+
+      if ( debugresponse ) { 
+        Serial.print ( "setMotorSpeed: Left speed changed: " );
+        Serial.println ( left );
+      } 
+     
+    } else {
+        Serial.println ( "setMotorSpeed: Left speed unchanged" );
+    }
+    
+    
+    if (right != oldSpeedR) {
+      vescMR.setDuty(right / 100);
+      oldSpeedR = right;
+
+      if ( debugresponse ) { 
+        Serial.print ( "setMotorSpeed: Right speed changed: " );
+        Serial.println ( right );
+      } 
+     
+    } else {
+        Serial.println ( "setMotorSpeed: Right speed unchanged" );
+    }}
 
 // ------- Motor End -------
 
@@ -508,7 +538,7 @@ void setup() {
 
 
 
-   bool break;
+   bool breakout;
    int reason; // it switches to several other loops.
     // 1 is room nav
     // 2 is debug looping
@@ -522,29 +552,67 @@ void loop() {
 // --- === ---
 
 // UpdateData();
- break == false;
+ breakout == false;
  reason = 0;
   
  do { // Run the user navigation
 
-  // If condition met:
-  // break = true;
-  // set reason to specific number
+  Serial.println("I am stuck in the loop");
+    loopUltrasonic();
+    loopIR();
+    loopPressure();
+    getRSSIF();
+    getRSSIL();
+    getRSSIR();
+    if (vescML.getVescValues() ){
+       Serial.print("Left RPM: ");
+       Serial.print(vescML.data.rpm);
+       Serial.print(" | Tachometer: ");
+       Serial.println(vescML.data.tachometerAbs);
+    }
+    else { Serial.println("Left Data Failed!"); }
+    
+    if (vescMR.getVescValues() ){
+       Serial.print("Right RPM: ");
+       Serial.print(vescMR.data.rpm);
+       Serial.print(" | Tachometer: ");
+       Serial.println(vescMR.data.tachometerAbs);
+    }
+    else { Serial.println("Right Data Failed!"); }
+
+    //setMotorSpeed(5,5);
+    
   delay(500);
 
- } while (break == false);
+ } while (breakout == false);
 
- switch(reason):
+ switch(reason){
 
   case 1: // Navigation
-    bool targettreached = false;
-    do {
 
-      // NAVVVV
-      // something that sets targetreached to true
-      delay(500);
 
-    } while ( targetreached == false );
+/*
+ * Variable Key:
+ * 
+ * Ultrasonic distance at the front: distanceUltrasonic
+ * Infared distance to left: distanceIRLeft
+ * Infared distance to right: distanceIRRight
+ * Left pressure sensor: pressureReadingLeft
+ * Right pressure sensor: pressureReadingRight
+ * RSSI for front: rssiF
+ * RSSI for left: rssiL
+ * RSSI for right: rssiR
+ * 
+ * Format for vesc motor telemetry: [motor channel].data.[type of information]
+ * Motor channels (2): vescML, vescMR
+ * Types of information (4): rpm, inpVoltage, ampHours, tachometerAbs
+ * 
+ */
+
+
+  
+    bool targetreached = false;
+    while(targetreached == false){ delay(500); }
 
   break;
 
@@ -566,5 +634,5 @@ void loop() {
   break;
 
 // --- === ---
-}
+} }
 // --- === ---
