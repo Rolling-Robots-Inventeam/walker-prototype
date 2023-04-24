@@ -79,7 +79,7 @@
       const int UltrasonicTrig = 27;
       const int UltrasonicEcho = 28;
       const int FOR_RELAY_PIN = 3;
-      const int REV_RELAY_PIN = 4;
+      const int REV_RELAY_PIN = 4;  
 
         /* All parenthesis in rx -> tx order
         - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
@@ -536,8 +536,6 @@ void setup() {
 
 }
 
-
-
    bool breakout;
    int reason; // it switches to several other loops.
     // 1 is room nav
@@ -545,7 +543,6 @@ void setup() {
     // Anything else does nothing, and maybe logs an error message for now.
 
     // After the reason is taken care of, break is reset, and the main business comes
-
 
 // --- === ---
 void loop() {
@@ -579,9 +576,9 @@ void loop() {
        Serial.println(vescMR.data.tachometerAbs);
     }
     else { Serial.println("Right Data Failed!"); }
+  
+  setMotorSpeed(-4, -4);
 
-    //setMotorSpeed(5,5);
-    
   delay(500);
 
  } while (breakout == false);
