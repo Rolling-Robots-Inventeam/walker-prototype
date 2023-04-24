@@ -1,5 +1,5 @@
 /*
- * CORRECT EDITION 4/2/23
+ * CORRECT EDITION 4/23/23
  */
 
 
@@ -13,6 +13,10 @@
 */
 
 /* --- Latest Update Log --- 
+
+  Date: 4/23/23 
+
+  Alex. Adding the debug button. It puts it in debug / disable !
 
   Date: 4/16/23
 
@@ -64,6 +68,11 @@
     int rssiL = 0;
     int rssiR = 0;
 
+
+    bool disable() {
+      return (!digitalRead(22) );
+    }
+
     
   // Pins
     // Analog
@@ -80,6 +89,8 @@
       const int UltrasonicEcho = 28;
       const int FOR_RELAY_PIN = 3;
       const int REV_RELAY_PIN = 4;
+
+      const int DebugSwitchPin = 22;
 
         /* All parenthesis in rx -> tx order
         - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
@@ -161,6 +172,28 @@
         Serial.println ( "setMotorSpeed: Right speed unchanged" );
     }}
 
+    void motordebug(){
+      if(debugresponse){
+    
+        if (vescML.getVescValues() ){
+           Serial.print("Left RPM: ");
+           Serial.print(vescML.data.rpm);
+           Serial.print(" | Tachometer: ");
+           Serial.println(vescML.data.tachometerAbs);
+        }
+        else { Serial.println("Left Data Failed!"); }
+        
+        if (vescMR.getVescValues() ){
+           Serial.print("Right RPM: ");
+           Serial.print(vescMR.data.rpm);
+           Serial.print(" | Tachometer: ");
+           Serial.println(vescMR.data.tachometerAbs);
+        }
+        else { Serial.println("Right Data Failed!"); }
+    
+      } else{}
+    }
+
 // ------- Motor End -------
 
 
@@ -182,6 +215,8 @@ void retractActuators(){
 
 
 // ------- Sensor Start -------
+
+  
 
   // Ultrasonic variableas
   int distanceUltrasonic; // variable for the distance measurement
@@ -517,6 +552,8 @@ void setup() {
   pinMode(FOR_RELAY_PIN, OUTPUT);
   pinMode(REV_RELAY_PIN, OUTPUT);
 
+  pinMode(DebugSwitchPin, INPUT_PULLUP);
+
   // Motor Setup
     Serial2.begin(vescbaudrate);
     vescML.setSerialPort(&Serial2);
@@ -534,8 +571,9 @@ void setup() {
 
   Serial.println("Mega Master Start!");
 
-}
+  debugresponse = true;
 
+}
 
 
    bool breakout;
@@ -551,44 +589,34 @@ void setup() {
 void loop() {
 // --- === ---
 
-// UpdateData();
- breakout == false;
- reason = 0;
+ 
+ 
   
- do { // Run the user navigation
+ while (breakout == false) { // Run the user navigation
 
   Serial.println("I am stuck in the loop");
-    loopUltrasonic();
-    loopIR();
-    loopPressure();
-    getRSSIF();
-    getRSSIL();
-    getRSSIR();
-    if (vescML.getVescValues() ){
-       Serial.print("Left RPM: ");
-       Serial.print(vescML.data.rpm);
-       Serial.print(" | Tachometer: ");
-       Serial.println(vescML.data.tachometerAbs);
-    }
-    else { Serial.println("Left Data Failed!"); }
+    UpdateData();
+    motordebug();
     
-    if (vescMR.getVescValues() ){
-       Serial.print("Right RPM: ");
-       Serial.print(vescMR.data.rpm);
-       Serial.print(" | Tachometer: ");
-       Serial.println(vescMR.data.tachometerAbs);
-    }
-    else { Serial.println("Right Data Failed!"); }
 
-    //setMotorSpeed(5,5);
+    setMotorSpeed(-5,-5);
+    
+
+    if(disable()) { 
+      breakout = true; 
+      reason = 2; 
+      if(debugresponse){ Serial.println("Switch over!!"); }
+      }
+    
     
   delay(500);
 
- } while (breakout == false);
+ }
+ 
 
- switch(reason){
+ if(reason == 1){
 
-  case 1: // Navigation
+  // Navigation
 
 
 /*
@@ -614,25 +642,32 @@ void loop() {
     bool targetreached = false;
     while(targetreached == false){ delay(500); }
 
-  break;
+ }
 
 
 
-  case 2: // Debugging
-    while(1){
-      Debugger();
-      delay(500);
-      // stop whenever??
+  else if(reason == 2) { // Debugging
+    while(disable() == 1){
+      Serial.println("Debug mode!");
+      //Debugger();
+      delay(1000);
     }
-  break;
+    Serial.println("Get out of debug!");
+  }
 
 
 
-  default: // What??
-    // Log error message
-    delay(500);
-  break;
+  else{ // What??
+    Serial.println("How did we get here?");
+    delay(1000);
+    Serial.println("Short timeout for you.");
+    delay(5000);
+  }
+
+  if(debugresponse){ Serial.println("Back to the top!"); } 
+  breakout = false;
+  reason = 0;
 
 // --- === ---
-} }
+}
 // --- === ---
