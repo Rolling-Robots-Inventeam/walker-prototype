@@ -1,5 +1,5 @@
 /*
- * CORRECT EDITION 4/2/23
+ * CORRECT EDITION 4/23/23
  */
 
 
@@ -13,6 +13,10 @@
 */
 
 /* --- Latest Update Log --- 
+
+  Date: 4/23/23 
+
+  Alex. Adding the debug button. It puts it in debug / disable !
 
   Date: 4/16/23
 
@@ -47,6 +51,7 @@
     #include <VescUart.h>
     #include <SoftwareSerial.h>
     #include <stdlib.h>
+    #include <Adafruit_LSM6DSO32.h>
   
   // Constants
     bool debugresponse = true;
@@ -64,22 +69,27 @@
     int rssiL = 0;
     int rssiR = 0;
 
+
+    bool disable() {
+      return (!digitalRead(22) );
+    }
+
     
   // Pins
     // Analog
-      const int LeftHandbrake = 14;   // A0
-      const int RightHandbrake = 15;  // A1
-      const int LeftInfared = 16;     // A2
-      const int RightInfared = 17;    // A3
-      //int ANALOG4 = 18; // A4
-      //int ANALOG5 = 19; // A5
+      const int LeftHandbrake = A0;
+      const int RightHandbrake = A1;
+      const int LeftInfared = A5;
+      const int RightInfared = A4;
 
     // Digital and Serial
 
       const int UltrasonicTrig = 27;
       const int UltrasonicEcho = 28;
       const int FOR_RELAY_PIN = 3;
-      const int REV_RELAY_PIN = 4;  
+      const int REV_RELAY_PIN = 4;
+
+      const int DebugSwitchPin = 22;
 
         /* All parenthesis in rx -> tx order
         - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
@@ -99,8 +109,6 @@
       SoftwareSerial SoftSerialLoRa(50, 51);
 
 // ------- Setup End -------
-
-
 
 // ------- Motor Start -------
 
@@ -161,25 +169,43 @@
         Serial.println ( "setMotorSpeed: Right speed unchanged" );
     }}
 
+    void motordebug(){
+      if(debugresponse){
+    
+        if (vescML.getVescValues() ){
+           Serial.print("Left RPM: ");
+           Serial.print(vescML.data.rpm);
+           Serial.print(" | Tachometer: ");
+           Serial.println(vescML.data.tachometerAbs);
+        }
+        else { Serial.println("Left Data Failed!"); }
+        
+        if (vescMR.getVescValues() ){
+           Serial.print("Right RPM: ");
+           Serial.print(vescMR.data.rpm);
+           Serial.print(" | Tachometer: ");
+           Serial.println(vescMR.data.tachometerAbs);
+        }
+        else { Serial.println("Right Data Failed!"); }
+    
+      } else{}
+    }
+
 // ------- Motor End -------
-
-
 
 // ------- Actuator Start -------
 
-void extendActuators(){
-  digitalWrite(FOR_RELAY_PIN, HIGH);
-  digitalWrite(REV_RELAY_PIN, LOW);
-}
+  void extendActuators(){
+    digitalWrite(FOR_RELAY_PIN, HIGH);
+    digitalWrite(REV_RELAY_PIN, LOW);
+  }
 
-void retractActuators(){
-  digitalWrite(FOR_RELAY_PIN, LOW);
-  digitalWrite(REV_RELAY_PIN, HIGH);
-}
+  void retractActuators(){
+    digitalWrite(FOR_RELAY_PIN, LOW);
+    digitalWrite(REV_RELAY_PIN, HIGH);
+  }
 
 // ------- Actuator End -------
-
-
 
 // ------- Sensor Start -------
 
@@ -225,9 +251,9 @@ void retractActuators(){
   
     if ( debugresponse ) { 
       Serial.print ( "loopIR - Infared distances: Left: " );
-      Serial.print ( distanceIRLeft );
+      Serial.print ( voltsL );
       Serial.print ( " Right: " );
-      Serial.println ( distanceIRRight );
+      Serial.println ( voltsR );
     }
   }
 
@@ -251,8 +277,6 @@ void retractActuators(){
   }
 
 // ------- Sensor End -------
-
-
 
 // ------- Bluetooth Serial Start -------
 
@@ -293,19 +317,16 @@ void retractActuators(){
       Serial.println(indivbyte);
     }
   }
+    /*
+    RSSI Functions:
+    - Simply run em' once in the update cycle (ideally)
+    - They output to global variables 'rssiL', 'rssiR', and 'rssiF'
+    - use variables at your discretion
+    */
 
-// ---===---
+  // getRSSI Left
 
-/*
- RSSI Functions:
- - Simply run em' once in the update cycle (ideally)
- - They output to global variables 'rssiL', 'rssiR', and 'rssiF'
- - use variables at your discretion
-*/
-
-// ---===---
-
-  void getRSSIL() { //Comprehensive acquisition of RSSI
+   void getRSSIL() { //Comprehensive acquisition of RSSI
 
     // --- DEVELOPMENT OF INFO ---
     // Serial command (Individual bytes)
@@ -313,7 +334,7 @@ void retractActuators(){
     // RSSIString (Extracted RSSI value, string form)
     // rssi (RSSI value, float form)
     
-    //Serial.listen(); //find serial value
+    SoftSerialBLE.listen(); //find serial value
 
     while (SoftSerialBLE.available() > 0) { //If there are available bytes...
       
@@ -353,9 +374,11 @@ void retractActuators(){
         
         tlm_pos = 0;  // Await next command
         
-      }   }   }
+      }
+    }
+   }
 
-// ---===---
+  // getRSSI Right
 
    void getRSSIR() { 
 
@@ -396,9 +419,11 @@ void retractActuators(){
         
         tlm_pos = 0;  // Await next command
         
-      }   }   }
+      }
+    }
+   }
 
-// ---===---
+  // getRSSI Forward
 
    void getRSSIF() { 
 
@@ -439,26 +464,112 @@ void retractActuators(){
         
         tlm_pos = 0;  // Await next command
         
-      }   }   }
+      }
+    }
+   }
           
-
 // ------- Bluetooth Serial End -------
-
-
 
 // ------- LoRa Start -------
 // ------- LoRa End -------
 
+// ------- IMU Start -------
+  // Basic demo for accelerometer & gyro readings from Adafruit
+  // LSM6DSO32 sensor
+
+  #include <Adafruit_LSM6DSO32.h>
+
+  // For SPI mode, we need a CS pin
+  #define LSM_CS 12
+  // For software-SPI mode we need SCK/MOSI/MISO pins
+  #define LSM_SCK 13
+  #define LSM_MISO 12
+  #define LSM_MOSI 11
+
+  float distance_x;
+
+  Adafruit_LSM6DSO32 dso32;
+  
+  void IMUloop() {
+
+    //  /* Get a new normalized sensor event */
+    sensors_event_t accel;
+    sensors_event_t gyro;
+    sensors_event_t temp;
+    dso32.getEvent(&accel, &gyro, &temp);
+
+    float accel_x_tare;
+    accel_x_tare = 0.5;
+    float accel_x_tared;
+    
+  //  Serial.print("\t\tTemperature ");
+  //  Serial.print(temp.temperature);
+  //  Serial.println(" deg C");
+
+    /* Display the results (acceleration is measured in m/s^2) */
+    Serial.print("\t\tAccel X: ");
+    Serial.print(accel.acceleration.x);
+    Serial.print("\t\tAccel X Tared: ");
+    if (abs(accel.acceleration.x) > 0.2){
+      accel_x_tared = accel.acceleration.x + accel_x_tare;
+      } else {
+        accel_x_tared = accel.acceleration.x;
+        }
+    Serial.print(accel_x_tared);
+
+    
+    if (abs(accel_x_tared) >= 0.2){
+      distance_x = distance_x + (0.5 * (accel_x_tared) * pow(0.1, 2));
+    }
+  //  Serial.print(" \tY: ");
+  //  Serial.print(accel.acceleration.y);
+  //  Serial.print(" \tZ: ");
+  //  Serial.print(accel.acceleration.z);
+    Serial.println(" m/s^2 ");
+
+    Serial.print(distance_x);
+    Serial.println(" m ");
+
+  //  /* Display the results (rotation is measured in rad/s) */
+  //  Serial.print("\t\tGyro X: ");
+  //  Serial.print(gyro.gyro.x);
+  //  Serial.print(" \tY: ");
+  //  Serial.print(gyro.gyro.y);
+  //  Serial.print(" \tZ: ");
+  //  Serial.print(gyro.gyro.z);
+  //  Serial.println(" radians/s ");
+  //  Serial.println();
+
+    delay(100);
+
+    //  // serial plotter friendly format
+
+    //  Serial.print(temp.temperature);
+    //  Serial.print(",");
+
+    //  Serial.print(accel.acceleration.x);
+    //  Serial.print(","); Serial.print(accel.acceleration.y);
+    //  Serial.print(","); Serial.print(accel.acceleration.z);
+    //  Serial.print(",");
+
+    // Serial.print(gyro.gyro.x);
+    // Serial.print(","); Serial.print(gyro.gyro.y);
+    // Serial.print(","); Serial.print(gyro.gyro.z);
+    // Serial.println();
+    //  delayMicroseconds(10000);
+  }
+// ------- IMU End -------
 
 // ------- Control Start -------
 
   void UpdateData(){
-    loopUltrasonic();
-    loopIR();
-    loopPressure();
-    getRSSIF();
-    getRSSIL();
-    getRSSIR();
+    // loopUltrasonic();
+    // loopIR();
+    // loopPressure();
+    // getRSSIF();
+    // getRSSIL();
+    // getRSSIR();
+    // motordebug();
   }
 
     int threshUltrasonic = 60; // (reading of about 5 inches)
@@ -494,142 +605,271 @@ void retractActuators(){
 
 // ------- Control End -------
 
-
-
 // ------- Nav Start -------
 
-
-
-
-
-
-
+  void collisionDetect() {
+    if (distanceUltrasonic > 30) {
+      setMotorSpeed(-5,-5);  
+    } else {
+      setMotorSpeed(0,0);
+    }
+  }
 
 // ------- Nav End -------
 
+// ------- Setup Function Start -------
 
+  void setup() {
 
-void setup() {
+    pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
+    pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
 
-  pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
-  pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
+    pinMode(FOR_RELAY_PIN, OUTPUT);
+    pinMode(REV_RELAY_PIN, OUTPUT);
 
-  pinMode(FOR_RELAY_PIN, OUTPUT);
-  pinMode(REV_RELAY_PIN, OUTPUT);
+    pinMode(LeftInfared, INPUT);
+    pinMode(RightInfared, INPUT);
 
-  // Motor Setup
-    Serial2.begin(vescbaudrate);
-    vescML.setSerialPort(&Serial2);
+    pinMode(SDA, INPUT);
+    pinMode(SCL, INPUT);
 
-    Serial3.begin(vescbaudrate);
-    vescMR.setSerialPort(&Serial3);
-  
-  // BLE Setup
-    Serial.begin(9600);
-    Serial1.begin(9600);
-    SoftSerialBLE.begin(9600);
+    pinMode(DebugSwitchPin, INPUT_PULLUP);
 
-  // LoRa Setup
-    SoftSerialLoRa.begin(9600);
+    // Motor Setup
+      Serial2.begin(vescbaudrate);
+      vescML.setSerialPort(&Serial2);
 
-  Serial.println("Mega Master Start!");
-
-}
-
-   bool breakout;
-   int reason; // it switches to several other loops.
-    // 1 is room nav
-    // 2 is debug looping
-    // Anything else does nothing, and maybe logs an error message for now.
-
-    // After the reason is taken care of, break is reset, and the main business comes
-
-// --- === ---
-void loop() {
-// --- === ---
-
-// UpdateData();
- breakout == false;
- reason = 0;
-  
- do { // Run the user navigation
-
-  Serial.println("I am stuck in the loop");
-    loopUltrasonic();
-    loopIR();
-    loopPressure();
-    getRSSIF();
-    getRSSIL();
-    getRSSIR();
-    if (vescML.getVescValues() ){
-       Serial.print("Left RPM: ");
-       Serial.print(vescML.data.rpm);
-       Serial.print(" | Tachometer: ");
-       Serial.println(vescML.data.tachometerAbs);
-    }
-    else { Serial.println("Left Data Failed!"); }
+      Serial3.begin(vescbaudrate);
+      vescMR.setSerialPort(&Serial3);
     
-    if (vescMR.getVescValues() ){
-       Serial.print("Right RPM: ");
-       Serial.print(vescMR.data.rpm);
-       Serial.print(" | Tachometer: ");
-       Serial.println(vescMR.data.tachometerAbs);
+    // BLE Setup
+      Serial.begin(9600);
+      Serial1.begin(9600);
+      SoftSerialBLE.begin(9600);
+
+    // LoRa Setup
+      SoftSerialLoRa.begin(9600);
+
+    Serial.println("Mega Master Start!");
+
+    debugresponse = true;
+    
+
+    Serial.println("Adafruit LSM6DSO32 test!");
+    
+    if (!dso32.begin_I2C()) {
+      // if (!dso32.begin_SPI(LSM_CS)) {
+      // if (!dso32.begin_SPI(LSM_CS, LSM_SCK, LSM_MISO, LSM_MOSI)) {
+      // Serial.println("Failed to find LSM6DSO32 chip");
+      while (1) {
+        delay(10);
+      }
     }
-    else { Serial.println("Right Data Failed!"); }
-  
-  setMotorSpeed(-4, -4);
 
-  delay(500);
+    Serial.println("LSM6DSO32 Found!");
 
- } while (breakout == false);
-
- switch(reason){
-
-  case 1: // Navigation
-
-
-/*
- * Variable Key:
- * 
- * Ultrasonic distance at the front: distanceUltrasonic
- * Infared distance to left: distanceIRLeft
- * Infared distance to right: distanceIRRight
- * Left pressure sensor: pressureReadingLeft
- * Right pressure sensor: pressureReadingRight
- * RSSI for front: rssiF
- * RSSI for left: rssiL
- * RSSI for right: rssiR
- * 
- * Format for vesc motor telemetry: [motor channel].data.[type of information]
- * Motor channels (2): vescML, vescMR
- * Types of information (4): rpm, inpVoltage, ampHours, tachometerAbs
- * 
- */
-
-
-  
-    bool targetreached = false;
-    while(targetreached == false){ delay(500); }
-
-  break;
-
-
-
-  case 2: // Debugging
-    while(1){
-      Debugger();
-      delay(500);
-      // stop whenever??
+    dso32.setAccelRange(LSM6DSO32_ACCEL_RANGE_8_G);
+    Serial.print("Accelerometer range set to: ");
+    switch (dso32.getAccelRange()) {
+    case LSM6DSO32_ACCEL_RANGE_4_G:
+      Serial.println("+-4G");
+      break;
+    case LSM6DSO32_ACCEL_RANGE_8_G:
+      Serial.println("+-8G");
+      break;
+    case LSM6DSO32_ACCEL_RANGE_16_G:
+      Serial.println("+-16G");
+      break;
+    case LSM6DSO32_ACCEL_RANGE_32_G:
+      Serial.println("+-32G");
+      break;
     }
-  break;
 
+    // dso32.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS );
+    Serial.print("Gyro range set to: ");
+    switch (dso32.getGyroRange()) {
+    case LSM6DS_GYRO_RANGE_125_DPS:
+      Serial.println("125 degrees/s");
+      break;
+    case LSM6DS_GYRO_RANGE_250_DPS:
+      Serial.println("250 degrees/s");
+      break;
+    case LSM6DS_GYRO_RANGE_500_DPS:
+      Serial.println("500 degrees/s");
+      break;
+    case LSM6DS_GYRO_RANGE_1000_DPS:
+      Serial.println("1000 degrees/s");
+      break;
+    case LSM6DS_GYRO_RANGE_2000_DPS:
+      Serial.println("2000 degrees/s");
+      break;
+    case ISM330DHCX_GYRO_RANGE_4000_DPS:
+      break; // unsupported range for the DSO32
+    }
 
+    // dso32.setAccelDataRate(LSM6DS_RATE_12_5_HZ);
+    Serial.print("Accelerometer data rate set to: ");
+    switch (dso32.getAccelDataRate()) {
+    case LSM6DS_RATE_SHUTDOWN:
+      Serial.println("0 Hz");
+      break;
+    case LSM6DS_RATE_12_5_HZ:
+      Serial.println("12.5 Hz");
+      break;
+    case LSM6DS_RATE_26_HZ:
+      Serial.println("26 Hz");
+      break;
+    case LSM6DS_RATE_52_HZ:
+      Serial.println("52 Hz");
+      break;
+    case LSM6DS_RATE_104_HZ:
+      Serial.println("104 Hz");
+      break;
+    case LSM6DS_RATE_208_HZ:
+      Serial.println("208 Hz");
+      break;
+    case LSM6DS_RATE_416_HZ:
+      Serial.println("416 Hz");
+      break;
+    case LSM6DS_RATE_833_HZ:
+      Serial.println("833 Hz");
+      break;
+    case LSM6DS_RATE_1_66K_HZ:
+      Serial.println("1.66 KHz");
+      break;
+    case LSM6DS_RATE_3_33K_HZ:
+      Serial.println("3.33 KHz");
+      break;
+    case LSM6DS_RATE_6_66K_HZ:
+      Serial.println("6.66 KHz");
+      break;
+    }
 
-  default: // What??
-    // Log error message
+    // dso32.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
+    Serial.print("Gyro data rate set to: ");
+    switch (dso32.getGyroDataRate()) {
+    case LSM6DS_RATE_SHUTDOWN:
+      Serial.println("0 Hz");
+      break;
+    case LSM6DS_RATE_12_5_HZ:
+      Serial.println("12.5 Hz");
+      break;
+    case LSM6DS_RATE_26_HZ:
+      Serial.println("26 Hz");
+      break;
+    case LSM6DS_RATE_52_HZ:
+      Serial.println("52 Hz");
+      break;
+    case LSM6DS_RATE_104_HZ:
+      Serial.println("104 Hz");
+      break;
+    case LSM6DS_RATE_208_HZ:
+      Serial.println("208 Hz");
+      break;
+    case LSM6DS_RATE_416_HZ:
+      Serial.println("416 Hz");
+      break;
+    case LSM6DS_RATE_833_HZ:
+      Serial.println("833 Hz");
+      break;
+    case LSM6DS_RATE_1_66K_HZ:
+      Serial.println("1.66 KHz");
+      break;
+    case LSM6DS_RATE_3_33K_HZ:
+      Serial.println("3.33 KHz");
+      break;
+    case LSM6DS_RATE_6_66K_HZ:
+      Serial.println("6.66 KHz");
+      break;
+    }
+  }
+
+// ------- Setup Function End -------
+
+// ------- Loop/Main Start -------
+  bool breakout;
+  int reason; // it switches to several other loops.
+  // 1 is room nav
+  // 2 is debug looping
+  // Anything else does nothing, and maybe logs an error message for now.
+  // After the reason is taken care of, break is reset, and the main business comes
+
+  void loop() {
+
+  while (breakout == false) { // Run the user navigation
+
+    Serial.println("I am stuck in the loop");
+      UpdateData();
+      collisionDetect();
+      IMUloop();
+
+      if(disable()) { 
+        breakout = true; 
+        reason = 2; 
+        if(debugresponse){ Serial.println("Switch over!!"); }
+        }
+      
+      
     delay(500);
-  break;
 
-// --- === ---
-} }
-// --- === ---
+  }
+  
+
+  if(reason == 1){
+
+    // Navigation
+
+
+  /*
+  * Variable Key:
+  * 
+  * Ultrasonic distance at the front: distanceUltrasonic
+  * Infared distance to left: distanceIRLeft
+  * Infared distance to right: distanceIRRight
+  * Left pressure sensor: pressureReadingLeft
+  * Right pressure sensor: pressureReadingRight
+  * RSSI for front: rssiF
+  * RSSI for left: rssiL
+  * RSSI for right: rssiR
+  * 
+  * Format for vesc motor telemetry: [motor channel].data.[type of information]
+  * Motor channels (2): vescML, vescMR
+  * Types of information (4): rpm, inpVoltage, ampHours, tachometerAbs
+  * 
+  */
+
+
+    
+      bool targetreached = false;
+      while(targetreached == false){ delay(500); }
+
+  }
+
+
+
+    else if(reason == 2) { // Debugging
+      while(disable() == 1){
+        Serial.println("Debug mode!");
+        //Debugger();
+        delay(1000);
+      }
+      Serial.println("Get out of debug!");
+    }
+
+
+
+    else{ // What??
+      Serial.println("How did we get here?");
+      delay(1000);
+      Serial.println("Short timeout for you.");
+      delay(5000);
+    }
+
+    if(debugresponse){ Serial.println("Back to the top!"); } 
+    breakout = false;
+    reason = 0;
+
+
+  }
+
+// ------- Loop/Main End -------
