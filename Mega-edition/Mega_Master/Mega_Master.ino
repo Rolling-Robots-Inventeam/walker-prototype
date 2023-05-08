@@ -1,5 +1,8 @@
+
+
+
 /*
- * CORRECT EDITION 4/23/23
+ * CORRECT EDITION 5/7/23
  */
 
 
@@ -13,37 +16,13 @@
 */
 
 /* --- Latest Update Log --- 
-
-  Date: 4/23/23 
-
-  Alex. Adding the debug button. It puts it in debug / disable !
-
-  Date: 4/16/23
-
-  Alex. Trying to add Vesc data.
-
-  Date: 4/2/23
-
-  Alex. We're doing this thing.
-  - Expand the RSSI function to work with all three serial ports.
-  - Isolate redundant telemetry functions. Comment out until it's verified the code works: then remove.
-  - Incorporate actuators? into hardware scheme.
-  - Start on Leo's nav algorithm.
-  
-  Date: 3/19/23
-  
-  Alex. Doing channel allocations.
-
-  Date: 3/15/23
-
-  Alex here! Just finished rewiring this thing for the Mega. Wiped out all the UART communication save for BLE, and brought over all the motor control stuff, now attached to hardware serials.
-
-  IMPORTANT THING: we have 3 BLE sensors we should be tracking, and this program's telemetry just accounts for 1!
-    - The other two telemetry updates should go in the bottom, next to the first.
-    - Remember that two are hardware serials and one is a software serial!
-    * Should the telemetries all update at once, or should they stagger over a period?
-    * Could we expand the existing UART framework to accomodate commands from the 3 sensors? I.E. a case switcher that checks Purpose byte, and each BLE gets its own Purpose number
-*/
+ *  
+ *  Alex here. Dealing with several things
+ *  
+ *  
+ *  
+ *  
+ */
 
 
 // ------- Setup Start -------
@@ -52,6 +31,8 @@
     #include <SoftwareSerial.h>
     #include <stdlib.h>
     #include <Adafruit_LSM6DSO32.h>
+    
+    
   
   // Constants
     bool debugresponse = true;
@@ -68,12 +49,6 @@
     int rssiF = 0;
     int rssiL = 0;
     int rssiR = 0;
-
-
-    bool disable() {
-      return (!digitalRead(22) );
-    }
-
     
   // Pins
     // Analog
@@ -84,12 +59,30 @@
 
     // Digital and Serial
 
-      const int UltrasonicTrig = 27;
-      const int UltrasonicEcho = 28;
-      const int FOR_RELAY_PIN = 3;
-      const int REV_RELAY_PIN = 4;
+      const int LidarPin = 10;
 
-      const int DebugSwitchPin = 22;
+      const int UltrasonicTrig = 28;
+      const int UltrasonicEcho = 29;
+      
+      const int RelayLF = 32;
+      const int RelayLR = 33;
+      const int RelayRF = 34;
+      const int RelayRR = 35;
+      const int RelayBF = 36;
+      const int RelayBR = 37;
+
+      const int BumperPin = 40;
+      const int SpeakerPin = 41;
+      
+      const int DebugSwitchPin = 49;
+
+      bool disable() {
+        return (!digitalRead(DebugSwitchPin) );
+      }
+
+      bool bumped() {
+        return (!digitalRead(BumperPin) );
+      }
 
         /* All parenthesis in rx -> tx order
         - Serial (0, 1)   - Serial1 (19, 18)   - Serial2 (17, 16)   - Serial3 (15, 14) 
@@ -99,14 +92,15 @@
           BLE Sensors: 
            No. 1: Serial0 (Front)
            No. 2: Serial1 (Right)
-           No. 3: Bonus software serial (22, 23) (Left)
+           No. 3: Bonus software serial (52, 53) (Left)
           LoRa:
-           Software serial (30,31)
+           Software serial (50,51)
 
-         Only software serial pins have to be specified. All others are set by default by Arduino */
-    
-      SoftwareSerial SoftSerialBLE(52, 53);
+         Only software ser  ial pins have to be specified. All others are set by default by Arduino */
+
       SoftwareSerial SoftSerialLoRa(50, 51);
+      SoftwareSerial SoftSerialBLE(52, 53);
+
 
 // ------- Setup End -------
 
@@ -196,13 +190,17 @@
 // ------- Actuator Start -------
 
   void extendActuators(){
-    digitalWrite(FOR_RELAY_PIN, HIGH);
-    digitalWrite(REV_RELAY_PIN, LOW);
+    digitalWrite(RelayLF, HIGH);
+    digitalWrite(RelayRF, HIGH);
+    digitalWrite(RelayLR, LOW);
+    digitalWrite(RelayRR, LOW);
   }
 
   void retractActuators(){
-    digitalWrite(FOR_RELAY_PIN, LOW);
-    digitalWrite(REV_RELAY_PIN, HIGH);
+    digitalWrite(RelayLR, HIGH);
+    digitalWrite(RelayRR, HIGH);
+    digitalWrite(RelayLF, LOW);
+    digitalWrite(RelayRF, LOW);
   }
 
 // ------- Actuator End -------
@@ -470,14 +468,19 @@
           
 // ------- Bluetooth Serial End -------
 
+
+
 // ------- LoRa Start -------
 // ------- LoRa End -------
 
-// ------- IMU Start -------
-  // Basic demo for accelerometer & gyro readings from Adafruit
-  // LSM6DSO32 sensor
 
-  #include <Adafruit_LSM6DSO32.h>
+
+// ------- IMU Start -------
+
+
+ 
+  // Basic demo for accelerometer & gyro readings from Adafruit
+  // LSM6DSO32 sensor added
 
   // For SPI mode, we need a CS pin
   #define LSM_CS 12
@@ -492,7 +495,7 @@
   
   void IMUloop() {
 
-    //  /* Get a new normalized sensor event */
+    //   Get a new normalized sensor event 
     sensors_event_t accel;
     sensors_event_t gyro;
     sensors_event_t temp;
@@ -506,7 +509,7 @@
   //  Serial.print(temp.temperature);
   //  Serial.println(" deg C");
 
-    /* Display the results (acceleration is measured in m/s^2) */
+    // Display the results (acceleration is measured in m/s^2) //
     Serial.print("\t\tAccel X: ");
     Serial.print(accel.acceleration.x);
     Serial.print("\t\tAccel X Tared: ");
@@ -530,7 +533,7 @@
     Serial.print(distance_x);
     Serial.println(" m ");
 
-  //  /* Display the results (rotation is measured in rad/s) */
+  //  // Display the results (rotation is measured in rad/s) //
   //  Serial.print("\t\tGyro X: ");
   //  Serial.print(gyro.gyro.x);
   //  Serial.print(" \tY: ");
@@ -558,18 +561,24 @@
     // Serial.println();
     //  delayMicroseconds(10000);
   }
+
+
+  
 // ------- IMU End -------
+
+
 
 // ------- Control Start -------
 
   void UpdateData(){
-    // loopUltrasonic();
-    // loopIR();
-    // loopPressure();
-    // getRSSIF();
-    // getRSSIL();
-    // getRSSIR();
-    // motordebug();
+    loopUltrasonic();
+    loopIR();
+    loopPressure();
+    getRSSIF();
+    getRSSIL();
+    getRSSIR();
+    motordebug();
+    IMUloop();
   }
 
     int threshUltrasonic = 60; // (reading of about 5 inches)
@@ -607,13 +616,18 @@
 
 // ------- Nav Start -------
 
+
   void collisionDetect() {
-    if (distanceUltrasonic > 30) {
+    if (distanceUltrasonic > 80) {
       setMotorSpeed(-5,-5);  
+      Serial.println("CollisionDetect - Driving!");
     } else {
       setMotorSpeed(0,0);
+      Serial.println("CollisionDetect - Stopped!");
     }
   }
+
+  
 
 // ------- Nav End -------
 
@@ -624,16 +638,25 @@
     pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
     pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
 
-    pinMode(FOR_RELAY_PIN, OUTPUT);
-    pinMode(REV_RELAY_PIN, OUTPUT);
+    pinMode(RelayLF, OUTPUT);
+    pinMode(RelayLR, OUTPUT);
+    pinMode(RelayRF, OUTPUT);
+    pinMode(RelayRR, OUTPUT);
+    pinMode(RelayBF, OUTPUT);
+    pinMode(RelayBR, OUTPUT);
 
-    pinMode(LeftInfared, INPUT);
-    pinMode(RightInfared, INPUT);
+    // pinMode(LeftInfared, INPUT);
+    // pinMode(RightInfared, INPUT);
 
     pinMode(SDA, INPUT);
     pinMode(SCL, INPUT);
 
+    pinMode(SpeakerPin, OUTPUT);
+    
+    pinMode(BumperPin, INPUT_PULLUP);
+    
     pinMode(DebugSwitchPin, INPUT_PULLUP);
+
 
     // Motor Setup
       Serial2.begin(vescbaudrate);
@@ -782,6 +805,23 @@
       Serial.println("6.66 KHz");
       break;
     }
+
+
+  Serial.println("Acutator test");
+  digitalWrite(RelayLR, HIGH);
+  delay(1000);
+  digitalWrite(RelayLR, LOW);
+  delay(1000);
+  digitalWrite(RelayLF, HIGH);
+  delay(1000);
+  digitalWrite(RelayLF, LOW);
+  delay(1000);
+
+
+
+  
+  Serial.println("Setup complete!");
+    
   }
 
 // ------- Setup Function End -------
@@ -796,13 +836,14 @@
 
   void loop() {
 
+
   while (breakout == false) { // Run the user navigation
 
     Serial.println("I am stuck in the loop");
       UpdateData();
       collisionDetect();
-      IMUloop();
 
+      
       if(disable()) { 
         breakout = true; 
         reason = 2; 
@@ -851,6 +892,14 @@
       while(disable() == 1){
         Serial.println("Debug mode!");
         //Debugger();
+
+        if(bumped()){
+          Serial.println("Yes bumper!");
+        }
+        else { 
+          Serial.println("No bumper!");
+        }
+
         delay(1000);
       }
       Serial.println("Get out of debug!");
