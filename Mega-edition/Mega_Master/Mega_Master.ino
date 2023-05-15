@@ -893,6 +893,12 @@
         Serial.println("Debug mode!");
         //Debugger();
 
+        getRSSIL();
+        getRSSIF();
+        getRSSIR();
+
+        /*
+
         if(bumped()){
           Serial.println("Yes bumper!");
         }
@@ -900,7 +906,9 @@
           Serial.println("No bumper!");
         }
 
-        delay(1000);
+        */
+
+        delay(250);
       }
       Serial.println("Get out of debug!");
     }
