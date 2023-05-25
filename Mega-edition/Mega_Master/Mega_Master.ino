@@ -368,14 +368,14 @@ void retractActuators(){
           if (tlmL[2] == '+' || tlmL[2] == '-') { //If thing is valid
   
             String RSSIString; //start up buffer string
-            int i; if (tlmL[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
-            while (i < 6) {
+            
+            int i; if (tlmL[2] == '-') { i = 2; } else { i = 3; } // Create index, adjust index to include / exclude sign
+            while (i < 6) { 
               RSSIString = RSSIString + tlmL[i];  // built string out of character array
-              i++;
+              i++; // move index up
             }
-            //rssiL = ("%0.2f", ( RSSIString.toFloat() ) ); 
 
-            rssiL = ( atoi( RSSIString.c_str() ) );
+            rssiL = ( atoi( RSSIString.c_str() ) ); // convert the string into an integer
 
             if (debugresponse) { 
               Serial.print("GetRSSIL - Value: ");
