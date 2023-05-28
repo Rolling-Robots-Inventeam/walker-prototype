@@ -570,6 +570,10 @@
 
 // ------- Control Start -------
 
+  int RSSILavg;
+  int RSSIRavg;
+  int RSSIFavg;
+
   void UpdateData(){
     loopUltrasonic();
     loopIR();
@@ -579,6 +583,8 @@
     getRSSIR();
     motordebug();
     IMUloop();
+
+
   }
 
     int threshUltrasonic = 60; // (reading of about 5 inches)
@@ -612,6 +618,8 @@
       }
     }
 
+
+  void RSSIPlotter(){}
 // ------- Control End -------
 
 // ------- Nav Start -------
@@ -625,6 +633,100 @@
       setMotorSpeed(0,0);
       Serial.println("CollisionDetect - Stopped!");
     }
+  }
+
+  // float mapRSSI( float x ) {
+  //   const int expecthigh = 80;
+  //   const int expectlow = 50;
+    
+  //   return (x - expectlow) * 100 / (expecthigh - expectlow);
+  // }
+
+  
+  // PROBLEM. Cannot use one mapper function for multiple 
+  // float mapRSSI (float x) { // RSSI with input smoothing and basic adaptive mapping
+  //   static float expecthigh = 80; // upper boundary
+  //   static float expectlow = 50; // lower boundary
+  //   static float cumulativeavg = 0; // buffer for input smoothing
+  //   float end; // result variable
+
+  //   cumulativeavg = (cumulativeavg + x) / 2; // smooth input with basic integral functionss
+
+  //   if (cumulativeavg > expecthigh){
+  //     end = 1;
+  //     expecthigh = cumulativeavg;
+  //   }
+  //   else if (cumulativeavg < expectlow){
+  //     end = 0;
+  //     expectlow = cumulativeavg;
+  //   }
+  //   else{
+  //     end = (cumulativeavg - expectlow) / (expecthigh - expectlow);
+  //   }
+
+  //   return (end);
+  // }
+
+    static float ehL = 80; // Expected Highest. adaptive upper bound
+    static float elL = 50; // Expected Lowest. adaptivel lower bound
+    static float caL = 60; // Cumulative Average.
+
+    static float ehR = 80; 
+    static float elR = 50; 
+    static float caR = 60;
+
+  float mapRSSIL () { // Outputs 0-1. Input smoothing and advanced bound manipulation.
+    
+    float end; // result variable
+
+    caL = (caL + rssiL) / 2; // smooth input with basic integral function
+
+
+    if (caL > ehL){ // If it exceeds highest bound...
+      end = 1; // 
+      ehL = caL;
+      elL++; // Since it's not being touched, bring lower bound up.
+    }
+    else if(caL < elL){
+      end = 0;
+      elL = caL;
+      ehL--;
+    }
+    else{
+      end = (caL - elL) / (ehL - elL);
+      ehL--; elL++;
+    }
+
+    return (end);
+  }
+
+  float mapRSSIR () { // OUTPUTS ON 0-1 SCALE
+    float end;
+
+    caR = (caR + rssiR) / 2;
+
+    if (caR > ehR){
+      end = 1;
+      ehR = caR;
+      elR++;
+    }
+    else if(caR < elR){
+      end = 0;
+      elR = caR;
+      ehR--;
+    }
+    else{
+      end = (caR - elR) / (ehR - elR);
+      ehR--; elR++;
+    }
+
+    return (end);
+  }
+
+  void turnToBeacon() {
+    float angle = mapRSSIR - mapRSSIL;
+    setMotorSpeed( angle * 5, -angle * 5);
+
   }
 
   
@@ -678,12 +780,14 @@
     debugresponse = true;
     
 
+
+
     Serial.println("Adafruit LSM6DSO32 test!");
     
     if (!dso32.begin_I2C()) {
-      // if (!dso32.begin_SPI(LSM_CS)) {
-      // if (!dso32.begin_SPI(LSM_CS, LSM_SCK, LSM_MISO, LSM_MOSI)) {
-      // Serial.println("Failed to find LSM6DSO32 chip");
+      if (!dso32.begin_SPI(LSM_CS)) {
+      if (!dso32.begin_SPI(LSM_CS, LSM_SCK, LSM_MISO, LSM_MOSI)) {
+      Serial.println("Failed to find LSM6DSO32 chip"); } } 
       while (1) {
         delay(10);
       }
@@ -839,9 +943,9 @@
 
   while (breakout == false) { // Run the user navigation
 
-    Serial.println("I am stuck in the loop");
+    Serial.println("I am in the main loop!");
       UpdateData();
-      collisionDetect();
+      turnToBeacon();
 
       
       if(disable()) { 
@@ -872,6 +976,7 @@
   * RSSI for front: rssiF
   * RSSI for left: rssiL
   * RSSI for right: rssiR
+  *  (USE mapRSSI() or mapRSSIbetter() to turn these into 0-1 scaled functions for accurate relative strength)
   * 
   * Format for vesc motor telemetry: [motor channel].data.[type of information]
   * Motor channels (2): vescML, vescMR
