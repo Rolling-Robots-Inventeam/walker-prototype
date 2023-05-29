@@ -2,7 +2,7 @@
 
 
 /*
- * CORRECT EDITION 5/7/23
+ * CORRECT EDITION 5/28/23
  */
 
 
@@ -17,7 +17,7 @@
 
 /* --- Latest Update Log --- 
  *  
- *  Alex here. Dealing with several things
+ *  Alex here. Dealing with debug garbage.
  *  
  *  
  *  
@@ -100,6 +100,11 @@
 
       SoftwareSerial SoftSerialLoRa(50, 51);
       SoftwareSerial SoftSerialBLE(52, 53);
+
+
+      void debugrespond ( String text ) {
+        if(debugresponse){ Serial.println(text); }
+      }
 
 
 // ------- Setup End -------
@@ -334,6 +339,8 @@
     
     SoftSerialBLE.listen(); //find serial value
 
+    if (SoftSerialBLE.available() == 0 && debugresponse) { Serial.println("GetRSSIL - Failed!"); } else {}
+    
     while (SoftSerialBLE.available() > 0) { //If there are available bytes...
       
       static unsigned int tlm_pos = 0; //start at index zero
@@ -380,6 +387,8 @@
 
    void getRSSIR() { 
 
+    if (Serial1.available() == 0 && debugresponse) { Serial.println("GetRSSIR - Failed!"); } else {}
+    
     while (Serial1.available() > 0) { //If there are available bytes...
       
       static unsigned int tlm_pos = 0; //start at index zero
@@ -424,6 +433,8 @@
   // getRSSI Forward
 
    void getRSSIF() { 
+
+    if (Serial.available() == 0 && debugresponse) { Serial.println("GetRSSIF - Failed!"); } else {}
 
     while (Serial.available() > 0) { //If there are available bytes...
       
@@ -510,15 +521,18 @@
   //  Serial.println(" deg C");
 
     // Display the results (acceleration is measured in m/s^2) //
+    if (debugresponse) {
     Serial.print("\t\tAccel X: ");
     Serial.print(accel.acceleration.x);
     Serial.print("\t\tAccel X Tared: ");
+    }
     if (abs(accel.acceleration.x) > 0.2){
       accel_x_tared = accel.acceleration.x + accel_x_tare;
       } else {
         accel_x_tared = accel.acceleration.x;
         }
-    Serial.print(accel_x_tared);
+        
+    if (debugresponse) { Serial.print(accel_x_tared); }
 
     
     if (abs(accel_x_tared) >= 0.2){
@@ -528,10 +542,12 @@
   //  Serial.print(accel.acceleration.y);
   //  Serial.print(" \tZ: ");
   //  Serial.print(accel.acceleration.z);
+  if (debugresponse) {
     Serial.println(" m/s^2 ");
 
     Serial.print(distance_x);
     Serial.println(" m ");
+  }
 
   //  // Display the results (rotation is measured in rad/s) //
   //  Serial.print("\t\tGyro X: ");
@@ -635,12 +651,7 @@
     }
   }
 
-  // float mapRSSI( float x ) {
-  //   const int expecthigh = 80;
-  //   const int expectlow = 50;
-    
-  //   return (x - expectlow) * 100 / (expecthigh - expectlow);
-  // }
+ 
 
   
   // PROBLEM. Cannot use one mapper function for multiple 
@@ -685,16 +696,16 @@
     if (caL > ehL){ // If it exceeds highest bound...
       end = 1; // 
       ehL = caL;
-      elL++; // Since it's not being touched, bring lower bound up.
+      //elL++; // Since it's not being touched, bring lower bound up.
     }
     else if(caL < elL){
       end = 0;
       elL = caL;
-      ehL--;
+      //ehL--;
     }
     else{
       end = (caL - elL) / (ehL - elL);
-      ehL--; elL++;
+      //ehL--; elL++;
     }
 
     return (end);
@@ -708,16 +719,16 @@
     if (caR > ehR){
       end = 1;
       ehR = caR;
-      elR++;
+      //elR++;
     }
     else if(caR < elR){
       end = 0;
       elR = caR;
-      ehR--;
+      //ehR--;
     }
     else{
       end = (caR - elR) / (ehR - elR);
-      ehR--; elR++;
+      //ehR--; elR++;
     }
 
     return (end);
@@ -736,6 +747,10 @@
 // ------- Setup Function Start -------
 
   void setup() {
+
+    
+    debugresponse = false;
+    
 
     pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
     pinMode(UltrasonicEcho, INPUT); // Sets the echoPin as an INPUT
@@ -775,12 +790,10 @@
     // LoRa Setup
       SoftSerialLoRa.begin(9600);
 
-    Serial.println("Mega Master Start!");
-
-    debugresponse = true;
-    
+    debugrespond("Mega Master Start!");
 
 
+/*
 
     Serial.println("Adafruit LSM6DSO32 test!");
     
@@ -910,8 +923,10 @@
       break;
     }
 
+    */
 
-  Serial.println("Acutator test");
+
+  debugrespond("Actuator test");
   digitalWrite(RelayLR, HIGH);
   delay(1000);
   digitalWrite(RelayLR, LOW);
@@ -924,7 +939,7 @@
 
 
   
-  Serial.println("Setup complete!");
+  debugrespond("Setup complete");
     
   }
 
@@ -938,24 +953,48 @@
   // Anything else does nothing, and maybe logs an error message for now.
   // After the reason is taken care of, break is reset, and the main business comes
 
+ 
   void loop() {
+      static int im = 0;
 
 
   while (breakout == false) { // Run the user navigation
 
-    Serial.println("I am in the main loop!");
+    debugrespond("----------------------");
+    debugrespond("I am in the main loop!");
       UpdateData();
-      turnToBeacon();
+      //turnToBeacon();
+
+
+     
+
+      
+//
+//     if (im == 10){
+//      setMotorSpeed (0, 0);
+//     }
+//     else if (im == 20){
+//      setMotorSpeed (0, 0);
+//      im = 0;
+//     }
+//     else if(im == 5){
+//      setMotorSpeed(5,5);
+//     }
+//     else if(im == 15){
+//      setMotorSpeed(-5, -5);
+//     }
+//     im++;
 
       
       if(disable()) { 
         breakout = true; 
         reason = 2; 
-        if(debugresponse){ Serial.println("Switch over!!"); }
+        debugrespond("Serial, switch over!");
         }
+        
+
       
-      
-    delay(500);
+    delay(100);
 
   }
   
@@ -994,14 +1033,44 @@
 
 
     else if(reason == 2) { // Debugging
+      debugrespond("Debug mode!");
+      debugrespond("");
+      
       while(disable() == 1){
-        Serial.println("Debug mode!");
         //Debugger();
-
+        
         getRSSIL();
         getRSSIF();
         getRSSIR();
+         static int cumRSSIL = 0;
+         static int cumRSSIR = 0;
+         static int oldcRSSIL;
+         static int oldcRSSIR;
+         static int driveangle = 0;
 
+          if (rssiL < -10) { cumRSSIL = (cumRSSIL + rssiL) / 2; } else {}
+          if (rssiR < -10) { cumRSSIR = (cumRSSIR + rssiR) / 2; } else {}
+
+          driveangle = (driveangle + (cumRSSIR - cumRSSIL) / 2) / 2;
+
+          //Serial.print("raw L: ");
+         // Serial.print(rssiL);
+         // Serial.print(",");
+          
+          //Serial.print("averaged L: ");
+          Serial.print(cumRSSIL);
+          Serial.print(",");
+
+          //Serial.print("raw R: ");
+        //  Serial.print(rssiR);
+        //  Serial.print(",");
+          
+          //Serial.print("averaged R: ");
+          Serial.print(cumRSSIR);
+          Serial.print(",");
+
+
+          Serial.println(driveangle);
         /*
 
         if(bumped()){
@@ -1013,7 +1082,7 @@
 
         */
 
-        delay(250);
+        delay(200);
       }
       Serial.println("Get out of debug!");
     }
@@ -1032,6 +1101,7 @@
     reason = 0;
 
 
+   Serial.println("----------------------");
   }
 
 // ------- Loop/Main End -------
