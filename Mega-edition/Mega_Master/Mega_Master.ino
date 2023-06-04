@@ -76,7 +76,7 @@
       
       const int DebugSwitchPin = 49;
 
-      bool disable() {
+      bool debugdisable() {
         return (!digitalRead(DebugSwitchPin) );
       }
 
@@ -208,6 +208,15 @@
     digitalWrite(RelayRF, LOW);
   }
 
+  void brake(int state){ //placehlolder for solenoid brakes on the walker
+    if(state == 1){
+
+    }
+    else{
+
+    }
+  }
+
 // ------- Actuator End -------
 
 // ------- Sensor Start -------
@@ -293,33 +302,12 @@
 
   //-----
 
-  String pad3(int input) { // shoves a few zeros on the head of a number
-    if (input < 100) {
-      if (input < 10) {
-        return "00" + String(input);
-      } else {
-        return "0" + String(input);
-      }
-    } else {
-      return String(input);
-    }
-  }
-
-
   int between(int input, int low, int high){ // self explanatory
     if ( input > high ) { return high; }
     else if ( input < low ) { return low; }
     else { return input; }
   }
 
-
-  void listBytes() { // lists the individual bytes of a message
-    for (int i = 0; i < (maxlength - 1); i++) {
-      String indivbyte;
-      indivbyte = "Byte No. " + String(i) + " Is " + telemetry[i];
-      Serial.println(indivbyte);
-    }
-  }
     /*
     RSSI Functions:
     - Simply run em' once in the update cycle (ideally)
@@ -481,15 +469,8 @@
 
 
 
-// ------- LoRa Start -------
-// ------- LoRa End -------
-
-
-
 // ------- IMU Start -------
 
-
- 
   // Basic demo for accelerometer & gyro readings from Adafruit
   // LSM6DSO32 sensor added
 
@@ -599,14 +580,10 @@
     getRSSIR();
     motordebug();
     IMUloop();
-
-
   }
-
-    int threshUltrasonic = 60; // (reading of about 5 inches)
   
   void Debugger(){
-      
+      /*
       const int maxspeed = 6;
 
       static int Speed  = 0;
@@ -614,7 +591,7 @@
       int target = 0;
 
       // Target Shifting
-        if ( distanceUltrasonic > threshUltrasonic ) { // Anything to stop both motors
+        if ( distanceUltrasonic > Ultrasonic ) { // Anything to stop both motors
           target = maxspeed; 
         }
       
@@ -630,8 +607,9 @@
         Serial.print (" , Motor duty is set to ");
         Serial.println (Speed);
         Serial.println ("");
-
       }
+      
+      */
     }
 
 
@@ -651,33 +629,6 @@
     }
   }
 
- 
-
-  
-  // PROBLEM. Cannot use one mapper function for multiple 
-  // float mapRSSI (float x) { // RSSI with input smoothing and basic adaptive mapping
-  //   static float expecthigh = 80; // upper boundary
-  //   static float expectlow = 50; // lower boundary
-  //   static float cumulativeavg = 0; // buffer for input smoothing
-  //   float end; // result variable
-
-  //   cumulativeavg = (cumulativeavg + x) / 2; // smooth input with basic integral functionss
-
-  //   if (cumulativeavg > expecthigh){
-  //     end = 1;
-  //     expecthigh = cumulativeavg;
-  //   }
-  //   else if (cumulativeavg < expectlow){
-  //     end = 0;
-  //     expectlow = cumulativeavg;
-  //   }
-  //   else{
-  //     end = (cumulativeavg - expectlow) / (expecthigh - expectlow);
-  //   }
-
-  //   return (end);
-  // }
-
     static float ehL = 80; // Expected Highest. adaptive upper bound
     static float elL = 50; // Expected Lowest. adaptivel lower bound
     static float caL = 60; // Cumulative Average.
@@ -690,11 +641,11 @@
     
     float end; // result variable
 
-    caL = (caL + rssiL) / 2; // smooth input with basic integral function
+    caL = (caL + abs(rssiL)) / 2; // smooth input with basic integral function
 
 
     if (caL > ehL){ // If it exceeds highest bound...
-      end = 1; // 
+      end = 1; 
       ehL = caL;
       //elL++; // Since it's not being touched, bring lower bound up.
     }
@@ -714,7 +665,7 @@
   float mapRSSIR () { // OUTPUTS ON 0-1 SCALE
     float end;
 
-    caR = (caR + rssiR) / 2;
+    caR = (caR + abs(rssiR)) / 2;
 
     if (caR > ehR){
       end = 1;
@@ -735,7 +686,7 @@
   }
 
   void turnToBeacon() {
-    float angle = mapRSSIR - mapRSSIL;
+    float angle = mapRSSIR() - mapRSSIL();
     setMotorSpeed( angle * 5, -angle * 5);
 
   }
@@ -749,7 +700,7 @@
   void setup() {
 
     
-    debugresponse = false;
+    debugresponse = true;
     
 
     pinMode(UltrasonicTrig, OUTPUT); // Sets the trigPin as an OUTPUT
@@ -945,6 +896,8 @@
 
 // ------- Setup Function End -------
 
+
+
 // ------- Loop/Main Start -------
   bool breakout;
   int reason; // it switches to several other loops.
@@ -955,55 +908,33 @@
 
  
   void loop() {
-      static int im = 0;
-
-
-  while (breakout == false) { // Run the user navigation
-
-    debugrespond("----------------------");
-    debugrespond("I am in the main loop!");
+  
+   while (breakout == false) { // Run the user navigation
+    
+    if(debugresponse){ Serial.println("----------------------");}
       UpdateData();
-      //turnToBeacon();
-
-
-     
-
-      
-//
-//     if (im == 10){
-//      setMotorSpeed (0, 0);
-//     }
-//     else if (im == 20){
-//      setMotorSpeed (0, 0);
-//      im = 0;
-//     }
-//     else if(im == 5){
-//      setMotorSpeed(5,5);
-//     }
-//     else if(im == 15){
-//      setMotorSpeed(-5, -5);
-//     }
-//     im++;
-
-      
-      if(disable()) { 
+      // Autobrake feature
+      if (pressureReadingLeft >= 150 || pressureReadingRight >= 150) { brake(1); } else { brake(0); } 
+    
+      if(debugdisable()) { 
         breakout = true; 
-        reason = 2; 
-        debugrespond("Serial, switch over!");
+        reason = 1; // FOR NOW, DEBUG SWITCH SENDS IT TO AUTON
+         if(debugresponse){ Serial.println("I am in the main loop!"); }
         }
         
 
       
     delay(100);
 
-  }
+   }
   
 
   if(reason == 1){
+     if(debugresponse){ Serial.println("Begin Navigation"); }
 
     // Navigation
 
-
+      
   /*
   * Variable Key:
   * 
@@ -1023,10 +954,30 @@
   * 
   */
 
-
     
       bool targetreached = false;
-      while(targetreached == false){ delay(500); }
+      while(targetreached == false){ 
+         const float kdrive = 0.2;
+
+         static int cumRSSIL = 0;
+         static int cumRSSIR = 0;
+         static int oldcRSSIL;
+         static int oldcRSSIR;
+         static int driveangle = 0;
+
+          if (rssiL < -10) { cumRSSIL = (cumRSSIL + rssiL) / 2; } else {}
+          if (rssiR < -10) { cumRSSIR = (cumRSSIR + rssiR) / 2; } else {}
+
+          driveangle = (driveangle + (cumRSSIR - cumRSSIL) / 2);
+
+          if (distanceUltrasonic >= 50) { setMotorSpeed(-driveangle*kdrive, driveangle*kdrive); } 
+          else{ setMotorSpeed(0,0); }
+
+          targetreached = !debugdisable();
+        delay(100); 
+        
+        }
+      debugrespond("Done with auton!");
 
   }
 
@@ -1036,8 +987,8 @@
       debugrespond("Debug mode!");
       debugrespond("");
       
-      while(disable() == 1){
-        //Debugger();
+      while(debugdisable() == 1){
+
         
         getRSSIL();
         getRSSIF();
@@ -1053,35 +1004,10 @@
 
           driveangle = (driveangle + (cumRSSIR - cumRSSIL) / 2) / 2;
 
-          //Serial.print("raw L: ");
-         // Serial.print(rssiL);
-         // Serial.print(",");
-          
-          //Serial.print("averaged L: ");
           Serial.print(cumRSSIL);
           Serial.print(",");
-
-          //Serial.print("raw R: ");
-        //  Serial.print(rssiR);
-        //  Serial.print(",");
-          
-          //Serial.print("averaged R: ");
-          Serial.print(cumRSSIR);
-          Serial.print(",");
-
-
-          Serial.println(driveangle);
-        /*
-
-        if(bumped()){
-          Serial.println("Yes bumper!");
-        }
-        else { 
-          Serial.println("No bumper!");
-        }
-
-        */
-
+          Serial.println(cumRSSIR);
+     
         delay(200);
       }
       Serial.println("Get out of debug!");
@@ -1102,6 +1028,7 @@
 
 
    Serial.println("----------------------");
+   Serial.println("");  Serial.println("");  
   }
 
 // ------- Loop/Main End -------
