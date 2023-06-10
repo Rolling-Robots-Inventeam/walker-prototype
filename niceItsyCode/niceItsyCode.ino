@@ -108,21 +108,6 @@ typedef struct node_record_s
 
 node_record_t records[ARRAY_SIZE];
 
-String pad4( int input ){
-
-  if ( input < 10) { 
-        return "000" + String(input);
-      } 
-  if ( input < 100) { 
-        return "00" + String(input);
-      } 
-  if ( input < 1000) { 
-        return "0" + String(input);
-      } 
-  return String(input); 
-
-}
-
 String pad3( int input ){
 
   if ( input < 10) { 
