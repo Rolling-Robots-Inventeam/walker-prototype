@@ -124,10 +124,9 @@ String pad3( int input ){
 void sendRSSITelem(int rssi_telem){
   String cmd;  // initialize
 
-  // cmd = "84-" + pad3(abs(int(round(rssi_telem))) );
+
   cmd = rssi_telem;
-  // cmd = "84-100";
-  //   PL + RSSI
+
 
   // Adafruit hates writing strings over serial, so here we handconvert string into char array
   char charcommand[cmd.length()];

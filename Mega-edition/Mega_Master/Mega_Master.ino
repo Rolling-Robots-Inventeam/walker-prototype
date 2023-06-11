@@ -2,7 +2,7 @@
 
 
 /*
- * CORRECT EDITION 5/28/23
+ * EF Edition 6/10
  */
 
 
@@ -17,10 +17,10 @@
 
 /* --- Latest Update Log --- 
  *  
- *  Alex here. Dealing with debug garbage.
- *  
- *  
- *  
+ * Alex here!
+ *  With new logic, the RSSI values are accepted easily.
+ *  Testing the program that pumps out motor data, tuning to make sure signs work nicely.
+ *  Everyone's in the process of finishing up building
  *  
  */
 
@@ -31,6 +31,7 @@
     #include <SoftwareSerial.h>
     #include <stdlib.h>
     #include <Adafruit_LSM6DSO32.h>
+    #include <string.h>
     
     
   
@@ -114,9 +115,6 @@
   VescUart vescML;
   VescUart vescMR;
 
-  int oldSpeedL = 0;
-  int oldSpeedR = 0;
-
   float getMotorRPM(VescUart vesc) {
     if (vesc.getVescValues()) {
       float motor_rpm = vesc.data.rpm;
@@ -139,53 +137,28 @@
     vescMR.setDuty(right / 100); 
   }
 
-  void setMotorSpeedBetter(float left, float right){
-    if (left != oldSpeedL) {
-  
-      vescML.setDuty(left / 100);
-      oldSpeedL = left;
-
-      if ( debugresponse ) { 
-        Serial.print ( "setMotorSpeed: Left speed changed: " );
-        Serial.println ( left );
-      } 
-     
-    } else {
-        Serial.println ( "setMotorSpeed: Left speed unchanged" );
-    }
-    
-    
-    if (right != oldSpeedR) {
-      vescMR.setDuty(right / 100);
-      oldSpeedR = right;
-
-      if ( debugresponse ) { 
-        Serial.print ( "setMotorSpeed: Right speed changed: " );
-        Serial.println ( right );
-      } 
-     
-    } else {
-        Serial.println ( "setMotorSpeed: Right speed unchanged" );
-    }}
-
     void motordebug(){
       if(debugresponse){
     
         if (vescML.getVescValues() ){
+           Serial.print("Vesc - ");
+           
            Serial.print("Left RPM: ");
            Serial.print(vescML.data.rpm);
            Serial.print(" | Tachometer: ");
            Serial.println(vescML.data.tachometerAbs);
         }
-        else { Serial.println("Left Data Failed!"); }
+        else { Serial.println("Vesc - Left Data Failed!"); }
         
         if (vescMR.getVescValues() ){
+           Serial.print("Vesc - ");
+          
            Serial.print("Right RPM: ");
            Serial.print(vescMR.data.rpm);
            Serial.print(" | Tachometer: ");
            Serial.println(vescMR.data.tachometerAbs);
         }
-        else { Serial.println("Right Data Failed!"); }
+        else { Serial.println("Vesc - Right Data Failed!"); }
     
       } else{}
     }
@@ -210,7 +183,6 @@
 
   void brake(int state){ //placehlolder for solenoid brakes on the walker
     if(state == 1){
-
     }
     else{
 
@@ -315,155 +287,81 @@
     - use variables at your discretion
     */
 
-  // getRSSI Left
+   void getRSSI() {
 
-   void getRSSIL() { //Comprehensive acquisition of RSSI
+    const int length = 5;
 
-    // --- DEVELOPMENT OF INFO ---
-    // Serial command (Individual bytes)
-    // TLM buffer (Full length command)
-    // RSSIString (Extracted RSSI value, string form)
-    // rssi (RSSI value, float form)
-    
-    SoftSerialBLE.listen(); //find serial value
+    static char BLEstringL[length];
+    static char BLEstringR[length];
+    static char BLEstringF[length];
 
-    if (SoftSerialBLE.available() == 0 && debugresponse) { Serial.println("GetRSSIL - Failed!"); } else {}
-    
-    while (SoftSerialBLE.available() > 0) { //If there are available bytes...
-      
-      static unsigned int tlm_pos = 0; //start at index zero
-       
-      char inByte = SoftSerialBLE.read(); //get the next byte
-      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
-        tlmL[tlm_pos] = inByte; //add to buffer
-        tlm_pos++; //set index up
-      }
-      else { //if we're at the end...
-        
-        tlmL[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???) (a.k.a with known length)
+    SoftSerialBLE.listen(); //L
 
-        // --- 
+if(debugresponse){
+    if (SoftSerialBLE.available() == 0 ) { Serial.println("GetRSSIL - Failed!"); } else {}
+    if (Serial1.available() == 0 ) { Serial.println("GetRSSIR - Failed!"); } else {}
+    if (Serial.available() == 0 ) { Serial.println("GetRSSIF - Failed!"); } else {}
+}
 
-          if (tlmL[2] == '+' || tlmL[2] == '-') { //If thing is valid
-  
-            String RSSIString; //start up buffer string
-            int i; if (tlmL[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
-            while (i < 6) {
-              RSSIString = RSSIString + tlmL[i];  // built string out of character array
-              i++;
-            }
-            //rssiL = ("%0.2f", ( RSSIString.toFloat() ) ); 
+ while (SoftSerialBLE.available() > 0)
+ {
+   static unsigned int message_pos = 0;
+   char inByte = SoftSerialBLE.read();
 
-            rssiL = ( atoi( RSSIString.c_str() ) );
-
-            if (debugresponse) { 
-              Serial.print("GetRSSIL - Value: ");
-              Serial.println(rssiL); 
-              }
-
-          } else {} //invalid
-        
-        // ---
-        
-        tlm_pos = 0;  // Await next command
-        
-      }
-    }
+   if ( inByte != '\n' && (message_pos < length) )
+   { BLEstringL[message_pos] = inByte; message_pos++; }
+   else {
+     BLEstringL[message_pos] = '\0';
+     message_pos = 0;
    }
+ }
+ rssiL = atoi( BLEstringL );
+ if (debugresponse) { 
+        Serial.print("GetRSSIL - Value: ");
+        Serial.println(rssiL); 
+ }
 
-  // getRSSI Right
+    // ---
 
-   void getRSSIR() { 
+  while (Serial1.available() > 0)
+  {
+   static unsigned int message_pos = 0;
+   char inByte = Serial1.read();
 
-    if (Serial1.available() == 0 && debugresponse) { Serial.println("GetRSSIR - Failed!"); } else {}
-    
-    while (Serial1.available() > 0) { //If there are available bytes...
-      
-      static unsigned int tlm_pos = 0; //start at index zero
-       
-      char inByte = Serial1.read(); //get the next byte
-      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
-        tlmR[tlm_pos] = inByte; //add to buffer
-        tlm_pos++; //set index up
-      }
-      else { //if we're at the end...
-        
-        tlmR[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
-
-        // ---
-
-          if (tlmR[2] == '+' || tlmR[2] == '-') { //If thing is valid
-  
-            String RSSIString; //start up buffer string
-            int i; if (tlmR[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
-            while (i < 6) {
-              RSSIString = RSSIString + tlmR[i];  // built string out of character array
-              i++;
-            }
-           
-            rssiR = ( atoi( RSSIString.c_str() ) );
-
-            if (debugresponse) { 
-              Serial.print("GetRSSIR - Value: ");
-              Serial.println(rssiR); 
-              }
-
-          } else {} //invalid
-        
-        // ---
-        
-        tlm_pos = 0;  // Await next command
-        
-      }
-    }
+   if ( inByte != '\n' && (message_pos < length) )
+   { BLEstringR[message_pos] = inByte; message_pos++; }
+   else {
+     BLEstringR[message_pos] = '\0';
+     message_pos = 0;
    }
+ }
+ rssiR = atoi( BLEstringR );
+ if (debugresponse) { 
+        Serial.print("GetRSSIR - Value: ");
+        Serial.println(rssiR); 
+ }
 
-  // getRSSI Forward
+// ---
 
-   void getRSSIF() { 
+    while (Serial.available() > 0)
+  {
+   static unsigned int message_pos = 0;
+   char inByte = Serial.read();
 
-    if (Serial.available() == 0 && debugresponse) { Serial.println("GetRSSIF - Failed!"); } else {}
-
-    while (Serial.available() > 0) { //If there are available bytes...
-      
-      static unsigned int tlm_pos = 0; //start at index zero
-       
-      char inByte = Serial.read(); //get the next byte
-      if (inByte != '\n' && (tlm_pos < maxlength - 1)) { //if it's before we reach the end...
-        tlmF[tlm_pos] = inByte; //add to buffer
-        tlm_pos++; //set index up
-      }
-      else { //if we're at the end...
-        
-        tlmF[tlm_pos] = '\0'; //close buffer (IS THIS NECCESSARY FOR INTERNAL BUFFER???)
-
-        // ---
-
-          if (tlmF[2] == '+' || tlmF[2] == '-') { //If thing is valid
-  
-            String RSSIString; //start up buffer string
-            int i; if (tlmF[2] == '-') { i = 2; } else { i = 3; } //adjust index to include / exclude sign
-            while (i < 6) {
-              RSSIString = RSSIString + tlmF[i];  // built string out of character array
-              i++;
-            }
-           
-            rssiF = ( atoi( RSSIString.c_str() ) );
-
-            if (debugresponse) { 
-              Serial.print("GetRSSIF - Value: ");
-              Serial.println(rssiF); 
-              }
-          
-          } else {} //invalid
-        
-        // ---
-        
-        tlm_pos = 0;  // Await next command
-        
-      }
-    }
+   if ( inByte != '\n' && (message_pos < length) )
+   { BLEstringF[message_pos] = inByte; message_pos++; }
+   else {
+     BLEstringF[message_pos] = '\0';
+     message_pos = 0;
    }
+ }
+ rssiF = atoi( BLEstringF );
+ if (debugresponse) { 
+        Serial.print("GetRSSIF - Value: ");
+        Serial.println(rssiF); 
+ }
+
+    }
           
 // ------- Bluetooth Serial End -------
 
@@ -540,7 +438,7 @@
   //  Serial.println(" radians/s ");
   //  Serial.println();
 
-    delay(100);
+    //delay(100);
 
     //  // serial plotter friendly format
 
@@ -575,9 +473,7 @@
     loopUltrasonic();
     loopIR();
     loopPressure();
-    getRSSIF();
-    getRSSIL();
-    getRSSIR();
+    getRSSI();
     motordebug();
     IMUloop();
   }
@@ -687,6 +583,11 @@
 
   void turnToBeacon() {
     float angle = mapRSSIR() - mapRSSIL();
+    
+    if(debugresponse){
+      Serial.print("Turntobeacon - Speed report:"); Serial.println(angle);
+      //sprintf("Speed report: %d", angle);
+    }
     setMotorSpeed( angle * 5, -angle * 5);
 
   }
@@ -876,7 +777,7 @@
 
     */
 
-
+/*
   debugrespond("Actuator test");
   digitalWrite(RelayLR, HIGH);
   delay(1000);
@@ -886,11 +787,12 @@
   delay(1000);
   digitalWrite(RelayLF, LOW);
   delay(1000);
-
+*/
 
 
   
   debugrespond("Setup complete");
+  delay(1000);
     
   }
 
@@ -912,9 +814,21 @@
    while (breakout == false) { // Run the user navigation
     
     if(debugresponse){ Serial.println("----------------------");}
-      UpdateData();
+
+    
+      loopPressure();
+      loopUltrasonic();
+      
       // Autobrake feature
-      if (pressureReadingLeft >= 150 || pressureReadingRight >= 150) { brake(1); } else { brake(0); } 
+      //if (pressureReadingLeft <= 500 || pressureReadingRight <= 500 || distanceUltrasonic >= 50) { 
+      if (distanceUltrasonic >= 50) { 
+          
+          setMotorSpeed(0,0);
+          if(debugresponse){ Serial.println("Braking!");}
+        }       
+      else { 
+          if(debugresponse){ Serial.println("Free!");}
+      } 
     
       if(debugdisable()) { 
         breakout = true; 
@@ -924,7 +838,7 @@
         
 
       
-    delay(100);
+    delay(500);
 
    }
   
@@ -957,7 +871,14 @@
     
       bool targetreached = false;
       while(targetreached == false){ 
-         const float kdrive = 0.2;
+
+         if(debugresponse){ Serial.println("----------------------");}
+         UpdateData();
+       
+         //turnToBeacon();
+
+         
+         const float kdrive = 0.1;
 
          static int cumRSSIL = 0;
          static int cumRSSIR = 0;
@@ -968,10 +889,24 @@
           if (rssiL < -10) { cumRSSIL = (cumRSSIL + rssiL) / 2; } else {}
           if (rssiR < -10) { cumRSSIR = (cumRSSIR + rssiR) / 2; } else {}
 
-          driveangle = (driveangle + (cumRSSIR - cumRSSIL) / 2);
+          driveangle =  cumRSSIR - cumRSSIL;
 
-          if (distanceUltrasonic >= 50) { setMotorSpeed(-driveangle*kdrive, driveangle*kdrive); } 
-          else{ setMotorSpeed(0,0); }
+          int leftspeed = driveangle * kdrive;
+          int rightspeed = -driveangle * kdrive;
+
+          if (distanceUltrasonic >= 50) { 
+            setMotorSpeed(leftspeed, rightspeed);
+            Serial.println("Drive - Speed system:");
+            Serial.print("  A: "); Serial.println(driveangle);
+            Serial.print("  L: "); Serial.println(leftspeed);
+            Serial.print("  R: "); Serial.println(rightspeed);
+           
+          } 
+          else{ 
+            Serial.println("Stopped!");
+            setMotorSpeed(0,0); 
+          }
+          
 
           targetreached = !debugdisable();
         delay(100); 
@@ -988,27 +923,8 @@
       debugrespond("");
       
       while(debugdisable() == 1){
-
-        
-        getRSSIL();
-        getRSSIF();
-        getRSSIR();
-         static int cumRSSIL = 0;
-         static int cumRSSIR = 0;
-         static int oldcRSSIL;
-         static int oldcRSSIR;
-         static int driveangle = 0;
-
-          if (rssiL < -10) { cumRSSIL = (cumRSSIL + rssiL) / 2; } else {}
-          if (rssiR < -10) { cumRSSIR = (cumRSSIR + rssiR) / 2; } else {}
-
-          driveangle = (driveangle + (cumRSSIR - cumRSSIL) / 2) / 2;
-
-          Serial.print(cumRSSIL);
-          Serial.print(",");
-          Serial.println(cumRSSIR);
      
-        delay(200);
+        delay(500);
       }
       Serial.println("Get out of debug!");
     }
