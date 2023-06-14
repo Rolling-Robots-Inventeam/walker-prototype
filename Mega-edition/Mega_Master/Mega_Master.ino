@@ -291,16 +291,16 @@
 
     const int length = 5;
 
-    static char BLEstringL[length];
+    static char BLEstringL[length]; // 
     static char BLEstringR[length];
     static char BLEstringF[length];
 
     SoftSerialBLE.listen(); //L
 
 if(debugresponse){
-    if (SoftSerialBLE.available() == 0 ) { Serial.println("GetRSSIL - Failed!"); } else {}
-    if (Serial1.available() == 0 ) { Serial.println("GetRSSIR - Failed!"); } else {}
-    if (Serial.available() == 0 ) { Serial.println("GetRSSIF - Failed!"); } else {}
+    if (SoftSerialBLE.available() == 0 ) { Serial.println("L Failed!"); } else { Serial.println("L Got!"); }
+    if (Serial1.available() == 0 ) { Serial.println("R Failed!"); } else { Serial.println("R Got!"); }
+    if (Serial.available() == 0 ) { Serial.println("F Failed!"); } else { Serial.println("F Got!"); }
 }
 
  while (SoftSerialBLE.available() > 0)
@@ -317,6 +317,8 @@ if(debugresponse){
  }
  rssiL = atoi( BLEstringL );
  if (debugresponse) { 
+        Serial.print("GetRSSIL - String: ");
+        Serial.println(BLEstringL); 
         Serial.print("GetRSSIL - Value: ");
         Serial.println(rssiL); 
  }
@@ -337,8 +339,10 @@ if(debugresponse){
  }
  rssiR = atoi( BLEstringR );
  if (debugresponse) { 
+        Serial.print("GetRSSIR - String: ");
+        Serial.println(BLEstringR); 
         Serial.print("GetRSSIR - Value: ");
-        Serial.println(rssiR); 
+        Serial.println(rssiR);
  }
 
 // ---
@@ -357,6 +361,8 @@ if(debugresponse){
  }
  rssiF = atoi( BLEstringF );
  if (debugresponse) { 
+        Serial.print("GetRSSIF - String: ");
+        Serial.println(BLEstringF); 
         Serial.print("GetRSSIF - Value: ");
         Serial.println(rssiF); 
  }
@@ -909,7 +915,7 @@ if(debugresponse){
           
 
           targetreached = !debugdisable();
-        delay(100); 
+        delay(250); 
         
         }
       debugrespond("Done with auton!");

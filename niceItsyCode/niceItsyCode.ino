@@ -1,5 +1,5 @@
-#include <string.h>
 #include <bluefruit.h>
+#include <string.h>
 #include <SoftwareSerial.h>
 #include <stdlib.h>
 #include <SPI.h>
@@ -81,27 +81,10 @@ BLEUuid ble_uuid = BLEUuid(CUSTOM_UUID);
 boolean return_of_the_mac = false;
 boolean missing_mac = true;
 
-// Analog
-//int ANALOG0 = 14;
-//int ANALOG1 = 15;
-//int ANALOG2 = 16;
-//int ANALOG3 = 17;
-//int ANALOG4 = 18;
-//int ANALOG5 = 19;
-
-// Digital
-//int DIGITAL2 = 2;
-//int DIGITAL5 = 5;
-//int DIGITAL7 = 7;
-//int DIGITAL9 = 9;
-//int DIGITAL10 = 10;
-//int DIGITAL11 = 11;
-int MicroCtrlMaster_rx = 12; //rx is purple
-int MicroCtrlMaster_tx = 13; //tx is white
+int MicroCtrlMaster_tx = 13; 
+int MicroCtrlMaster_rx = 12;
 
 SoftwareSerial MicroCtrlMaster(MicroCtrlMaster_rx,MicroCtrlMaster_tx);
-// Arduino Pin 12 goes to MicroCtrlMaster TX
-// Arduino Pin 13 goes to MicroCtrlMaster RX
 
 /* This struct is used to track detected nodes */
 typedef struct node_record_s
@@ -127,31 +110,15 @@ String pad3( int input ){
 }
 
 
-void sendRSSITelem(int rssi_telem){
-  String cmd;  // initialize
-
-
-  cmd = rssi_telem;
-
-
-  // Adafruit hates writing strings over serial, so here we handconvert string into char array
-  char charcommand[cmd.length()];
+void sendRSSITelem(){
   
-  for (int i = 0; i < cmd.length(); i++){
-    charcommand[i] = cmd.charAt(i);
-  }
-  MicroCtrlMaster.write(charcommand);
-  MicroCtrlMaster.println(" ");
-
-  Serial.print("Command is: ");
-  Serial.println(charcommand); //DEBUG
 }
 
 
 void setup()
 {
   Serial.begin(115200);
-  while ( !Serial ) delay(10);   // for nrf52840 with native usb
+  //while ( !Serial ) delay(10);   // for nrf52840 with native usb
 
   MicroCtrlMaster.begin(9600);
   
@@ -260,12 +227,36 @@ if (VERBOSE_OUTPUT | return_of_the_mac | missing_mac){
 
   /* RSSI value */
   // Serial.printf("%14s %d dBm\n", "MY RSSI", report->rssi); //DEBUG
-  Serial.printf("%d \n", report->rssi);
+  static int j; j++;
+  if (j == 50){
+     Serial.println("CONNECTION FAILIURE (50 iterations)");
+     MicroCtrlMaster.write("00");
+     j = 0;
+  }
+  
+   // Serial.printf("%d \n", report->rssi); // Not allowed to run until we're connected
 
   
   // if (missing_mac == false & return_of_the_mac == true){
-  if (return_of_the_mac == true){
-     sendRSSITelem(report->rssi);
+  if (return_of_the_mac == true){ // IF WE ARE CONNECTED AND SENDING RSSI VALUES
+      String cmd;  // initialize
+      int Rssi = abs(report->rssi);
+      /*
+      cmd = Rssi; // redundancies
+
+      // Adafruit hates writing strings over serial, so here we handconvert string into char array
+      char charcommand[ cmd.length() ];
+  
+      for (int i = 0; i < cmd.length(); i++){
+        charcommand[i] = cmd.charAt(i);
+      }
+      
+ 
+      MicroCtrlMaster.write(charcommand);
+      */
+      MicroCtrlMaster.write(Rssi);
+      Serial.printf("Sent: %d \n", Rssi); // The use of printf does not interfere with code
+      j = 0;
     
     }
     
