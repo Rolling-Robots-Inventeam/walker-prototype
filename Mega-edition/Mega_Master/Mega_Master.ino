@@ -620,11 +620,11 @@ if(debugresponse){
     pinMode(RelayBF, OUTPUT);
     pinMode(RelayBR, OUTPUT);
 
-    // pinMode(LeftInfared, INPUT);
-    // pinMode(RightInfared, INPUT);
+    pinMode(LeftInfared, INPUT);
+    pinMode(RightInfared, INPUT);
 
-    pinMode(SDA, INPUT);
-    pinMode(SCL, INPUT);
+    //pinMode(SDA, INPUT);
+    //pinMode(SCL, INPUT);
 
     pinMode(SpeakerPin, OUTPUT);
     
@@ -874,7 +874,7 @@ if(debugresponse){
   * 
   */
 
-    
+  
       bool targetreached = false;
       while(targetreached == false){ 
 
@@ -883,6 +883,9 @@ if(debugresponse){
        
          //turnToBeacon();
 
+         if ( distanceUltrasonic != 0 && distanceUltrasonic <= 50 ) { setMotorSpeed(5,5); } else { setMotorSpeed(0,0); }
+
+          /*
          
          const float kdrive = 0.1;
 
@@ -912,7 +915,7 @@ if(debugresponse){
             Serial.println("Stopped!");
             setMotorSpeed(0,0); 
           }
-          
+          */
 
           targetreached = !debugdisable();
         delay(250); 
